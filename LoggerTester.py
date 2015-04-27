@@ -9,6 +9,7 @@ from pycampbellcr1000 import CR1000
 from InvalidDateException import InvalidDateException
 
 
+
 # ####################################x
 # _______Tables on Device ____________#
 # Tables that should be on device     #
@@ -18,19 +19,25 @@ from InvalidDateException import InvalidDateException
 # Table24hr                           #
 # ####################################x
 
+
+# Holds the device's mapped location
+location = "/dev/ttyO0"
+
+# Holds the port on which we're communicating with the device
+port = "9600"
+
 # The device we're connecting to,
-device = CR1000.from_url('serial:/dev/ttyO0:9600')
+device = CR1000.from_url('serial:/' + location + ":" + port)
 # Return all tables from device
 tables = device.list_tables()
 # Return all files on device
 files = device.list_files()
 
 # ###############################################################
-# TODO: Remove both calls below, just a simple connection test. #
+# TODO: Remove both calls below, just a simple connection test. $
 # ###############################################################
 
 # Print out all tables on device
-
 print('Tables on device:')
 print(tables)
 
