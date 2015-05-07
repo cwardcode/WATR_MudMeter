@@ -11,6 +11,9 @@ from pycampbellcr1000 import CR1000
 from InvalidDateException import InvalidDateException
 
 
+
+
+
 # ####################################x
 # _______Tables on Device ____________#
 # Tables that should be on device     #
@@ -78,15 +81,25 @@ while True:
     except InvalidDateException:
         print("End date is before start date!")
 
+"""
+" function which takes in a table name, gathers its data and exports it as a CSV file for analysis.
+" @:param table_name - name of table to collect data and export
+"""
 
-def scanTable(self, table_name):
+
+def scantable(table_name):
     table_file = os.open(table_name + '.csv', os.O_WRONLY | os.O_APPEND | os.O_CREAT)
     table = device.get_data(table_name, start_date_form, end_date_form)
     table_csv = utils.dict_to_csv(table, ",", header=True)
     os.write(table_file, table_csv.encode('UTF-8'))
 
 
-scanTable('TableEachScan')
-scanTable('Table05Min')
-scanTable('Table15Min')
-scanTable('Table24Hr')
+"""
+" Call tables to scan.
+"""
+# TODO: Make this automatic from get_tables()
+
+scantable('TableEachScan')
+scantable('Table05Min')
+scantable('Table15Min')
+scantable('Table24Hr')
