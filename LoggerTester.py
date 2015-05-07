@@ -1,13 +1,14 @@
 # Author: Chris Ward
 # Date: 04/20/2015
 # Version: 4/24/2015
-# Description: Reads in data from our CR850 datalogger and stores to a local file
+# Description: Reads in data from our CR850 data logger and stores to a local file
 from datetime import datetime
+import os
 
+from pycampbellcr1000 import utils
 from pycampbellcr1000 import CR1000
 
 from InvalidDateException import InvalidDateException
-
 
 
 # ####################################x
@@ -19,33 +20,32 @@ from InvalidDateException import InvalidDateException
 # Table24hr                           #
 # ####################################x
 
-
 # Holds the device's mapped location
-location = "/dev/ttyO0"
+location = "COM1"
 
 # Holds the port on which we're communicating with the device
-port = "9600"
+port = "115200"
+print('connecting to logger...')
 
 # The device we're connecting to,
 device = CR1000.from_url('serial:/' + location + ":" + port)
-# Return all tables from device
-tables = device.list_tables()
-# Return all files on device
-files = device.list_files()
+print('connected to ' + location + ':' + port)
 
 # ###############################################################
 # TODO: Remove both calls below, just a simple connection test. $
 # ###############################################################
 
+# Return all files on device
+files = device.list_files()
+# If any files exist, print
+print('Files on device:')
+print(files)
+# Return all tables from device
+tables = device.list_tables()
 # Print out all tables on device
 print('Tables on device:')
 print(tables)
 
-# If any files exist, print
-print('Files on device:')
-print(files)
-
-# TODO: END CONNNECTION TEST #
 
 # Date to begin data collection
 start_date = ""
@@ -67,8 +67,8 @@ while True:
         start_date = input('Enter a start date to collect data: ')
         end_date = input('Enter an end date to collect data: ')
         print('Formatting date...')
-        start_date_form = datetime.strptime(start_date, "%b %d %Y")
-        end_date_form = datetime.strptime(end_date, "%b %d %Y")
+        start_date_form = datetime.strptime(str(start_date), "%b %d %Y")
+        end_date_form = datetime.strptime(str(end_date), "%b %d %Y")
         # Ensure start date is before end date
         if start_date_form > end_date_form:
             raise InvalidDateException('Invalid date!')
@@ -77,30 +77,16 @@ while True:
         print("Invalid date entered.")
     except InvalidDateException:
         print("End date is before start date!")
-# Print data for debugging
-print('Input start time: ' + start_date)
-print('Input end time: ' + end_date)
-print('Formatted start: ' + str(start_date_form))
-print('Formatted end: ' + str(end_date_form))
 
-# Now that we have the date, and everything is valid, let's get the data
-TableEachScan = device.get_data('TableEachScan', start_date_form, end_date_form)
-Table05Min = device.get_data('Table05min', start_date_form, end_date_form)
-Table15Min = device.get_data('Table15min', start_date_form, end_date_form)
-Table24hr = device.get_data('Table24hr', start_date_form, end_date_form)
-TableWipeTimes = device.get_data('WipeTimesTable', start_date_form, end_date_form)
 
-# Open file descriptors for each table
-TableEachScan_File = open('TableEachScan.csv', 'w')
-Table05Min_File = open('Table05Min.csv', 'w')
-Table15Min_File = open('Table15Min.csv', 'w')
-Table24hr_File = open('Table24Hr.csv', 'w')
-TableWipeTimes_File = open('WipeTimesTable', 'w')
+def scanTable(self, table_name):
+    table_file = os.open(table_name + '.csv', os.O_WRONLY | os.O_APPEND | os.O_CREAT)
+    table = device.get_data(table_name, start_date_form, end_date_form)
+    table_csv = utils.dict_to_csv(table, ",", header=True)
+    os.write(table_file, table_csv.encode('UTF-8'))
 
-# Write data to files -- should be in root of where script is ran, can output
-# to other location if needed. -- maybe a copy in /var/www for website?
-TableEachScan_File.read(TableEachScan)
-Table05Min_File.read(Table05Min)
-Table15Min_File.read(Table15Min)
-Table24hr_File.read(Table24hr)
-TableWipeTimes_File.read(TableWipeTimes)
+
+scanTable('TableEachScan')
+scanTable('Table05Min')
+scanTable('Table15Min')
+scanTable('Table24Hr')
