@@ -24,7 +24,7 @@ from InvalidDateException import InvalidDateException
 # ####################################x
 
 # Holds the device's mapped location
-location = "COM1"
+location = "/dev/ttyO0"
 
 # Holds the port on which we're communicating with the device
 port = "115200"
@@ -92,7 +92,7 @@ def scantable(table_name):
     table = device.get_data(table_name, start_date_form, end_date_form)
     table_csv = utils.dict_to_csv(table, ",", header=True)
     os.write(table_file, table_csv.encode('UTF-8'))
-
+    os.close(table_file)
 
 """
 " Call tables to scan.
