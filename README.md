@@ -7,4 +7,3 @@ Python
 
 Python package: pycampbellcr1000 (https://pypi.python.org/pypi/PyCampbellCR1000)
 
-*Must  alter table names in order to work with different loggers.
