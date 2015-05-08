@@ -4,10 +4,13 @@
 # Description: Reads in data from our CR850 data logger and stores to files based on table name.
 
 from datetime import datetime
-from InvalidDateException import InvalidDateException
+import os
+
 from pycampbellcr1000 import CR1000
 from pycampbellcr1000 import utils
-import os
+
+from InvalidDateException import InvalidDateException
+
 
 # Holds the device's mapped location
 location = "/dev/ttyO0"
@@ -17,7 +20,7 @@ port = "115200"
 print('connecting to logger...')
 
 # The device we're connecting to,
-#device = CR1000.from_url('serial:/' + location + ":" + port)
+device = CR1000.from_url('serial:/' + location + ":" + port)
 print('connected to ' + location + ':' + port)
 
 # Return all tables from device
