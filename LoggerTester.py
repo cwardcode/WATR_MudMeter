@@ -4,13 +4,10 @@
 # Description: Reads in data from our CR850 data logger and stores to files based on table name.
 
 from datetime import datetime
-import os
-
+from InvalidDateException import InvalidDateException
 from pycampbellcr1000 import CR1000
 from pycampbellcr1000 import utils
-
-from InvalidDateException import InvalidDateException
-
+import os
 
 
 # Holds the device's mapped location
@@ -68,6 +65,7 @@ while True:
 
 
 def collect_data(table_name):
+    exists = False
     if os.path.exists(table_name + '.csv'):
         exists = True
     table_file = os.open(table_name + '.csv', os.O_WRONLY | os.O_APPEND | os.O_CREAT)
@@ -88,8 +86,4 @@ def collect_data(table_name):
 for table in tables:
     collect_data(table)
 
-
-#collectdata('TableEachScan')
-#collectdata('Table05Min')
-#collectdata('Table15Min')
-#collectdata('Table24Hr')
+exit(0)
