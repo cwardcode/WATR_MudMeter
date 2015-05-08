@@ -12,6 +12,7 @@ from pycampbellcr1000 import utils
 from InvalidDateException import InvalidDateException
 
 
+
 # Holds the device's mapped location
 location = "/dev/ttyO0"
 
@@ -66,10 +67,17 @@ while True:
 """
 
 
-def collectdata(table_name):
+def collect_data(table_name):
+    if os.path.exists(table_name + '.csv'):
+        exists = True
     table_file = os.open(table_name + '.csv', os.O_WRONLY | os.O_APPEND | os.O_CREAT)
-    table = device.get_data(table_name, start_date_form, end_date_form)
-    table_csv = utils.dict_to_csv(table, ",", header=True)
+    table_data = device.get_data(table_name, start_date_form, end_date_form)
+
+    if exists:
+        table_csv = utils.dict_to_csv(table_data, ",", header=False)
+    else:
+        table_csv = utils.dict_to_csv(table_data, ",", header=True)
+
     os.write(table_file, table_csv.encode('UTF-8'))
     os.close(table_file)
 
@@ -78,7 +86,8 @@ def collectdata(table_name):
 """
 
 for table in tables:
-    collectdata(table)
+    collect_data(table)
+
 
 #collectdata('TableEachScan')
 #collectdata('Table05Min')
