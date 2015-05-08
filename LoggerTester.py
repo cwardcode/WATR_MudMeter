@@ -7,11 +7,21 @@ from datetime import datetime
 from InvalidDateException import InvalidDateException
 from pycampbellcr1000 import CR1000
 from pycampbellcr1000 import utils
+import platform
 import os
 
 
+# Check system platform, if windows, we need to open files in binary mode
+platform = platform.system()
+print("platform is: " + str(platform))
+
 # Holds the device's mapped location
-location = "/dev/ttyO0"
+if platform == 'Linux':
+    location = "/dev/ttyO0"
+elif platform == 'Windows':
+    location = "COM1"
+else:
+    location = "COM1"
 
 # Holds the port on which we're communicating with the device
 port = "115200"
@@ -40,7 +50,6 @@ start_date_form = ""
 end_date_form = ""
 
 # Ensure date input is valid, loop until valid dates are entered
-# TODO: Prompt & specify date format
 # TODO: Later, automate for specified interval if needed
 while True:
     try:
@@ -68,7 +77,10 @@ def collect_data(table_name):
     exists = False
     if os.path.exists(table_name + '.csv'):
         exists = True
-    table_file = os.open(table_name + '.csv', os.O_WRONLY | os.O_APPEND | os.O_CREAT)
+    if platform == 'Linux':
+        table_file = os.open(table_name + '.csv', os.O_WRONLY | os.O_APPEND | os.O_CREAT)
+    else:
+        table_file = os.open(table_name + '.csv', os.O_BINARY | os.O_WRONLY | os.O_APPEND | os.O_CREAT)
     table_data = device.get_data(table_name, start_date_form, end_date_form)
 
     if exists:
@@ -85,5 +97,3 @@ def collect_data(table_name):
 
 for table in tables:
     collect_data(table)
-
-exit(0)
