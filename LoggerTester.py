@@ -4,7 +4,6 @@
 # Description: Reads in data from our CR850 data logger and stores to files based on table name.
 
 from datetime import datetime
-from InvalidDateException import InvalidDateException
 from pycampbellcr1000 import CR1000
 from pycampbellcr1000 import utils
 import platform
@@ -13,7 +12,6 @@ import os
 
 # Check system platform, if windows, we need to open files in binary mode
 platform = platform.system()
-print("platform is: " + str(platform))
 
 # Holds the device's mapped location
 if platform == 'Linux':
@@ -25,47 +23,18 @@ else:
 
 # Holds the port on which we're communicating with the device
 port = "115200"
-print('connecting to logger...')
 
 # The device we're connecting to,
 device = CR1000.from_url('serial:/' + location + ":" + port)
-print('connected to ' + location + ':' + port)
 
-# Return all tables from device
+# Get all tables from device
 tables = device.list_tables()
-# Print out all tables on device
-print('Tables on device: ')
-print(tables)
 
-# Date to begin data collection
-start_date = ""
+# Start date for data  collection, should be fifteen minutes in the past
+start_date_form = datetime.now() - datetime.timedelta(minutes=15)
 
-# Date to end data collection
-end_date = ""
-
-# Start date, formatted
-start_date_form = ""
-
-# End date, formatted
-end_date_form = ""
-
-# Ensure date input is valid, loop until valid dates are entered
-# TODO: Later, automate for specified interval if needed
-while True:
-    try:
-        start_date = raw_input('Enter a start date to collect data: ')
-        end_date = raw_input('Enter an end date to collect data: ')
-        print('Formatting date...')
-        start_date_form = datetime.strptime(start_date, "%b %d %Y")
-        end_date_form = datetime.strptime(end_date, "%b %d %Y")
-        # Ensure start date is before end date
-        if start_date_form > end_date_form:
-            raise InvalidDateException('Invalid date!')
-        break
-    except ValueError:
-        print("Invalid date entered.")
-    except InvalidDateException:
-        print("End date is before start date!")
+# End date for  data collection, should be now, to complete our 15 minute interval
+end_date_form = datetime.now()
 
 """
 " function which takes in a table name, gathers its data and exports it as a CSV file for analysis.
