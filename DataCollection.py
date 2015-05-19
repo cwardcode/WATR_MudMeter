@@ -15,7 +15,7 @@ platform = platform.system()
 
 # Holds the device's mapped location
 if platform == 'Linux':
-    location = "/dev/ttyO0"
+    location = "/dev/ttyO4"
 elif platform == 'Windows':
     location = "COM1"
 else:
