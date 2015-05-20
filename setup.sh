@@ -11,14 +11,18 @@
 # 1  - Missing required files
 # 2  - User does not have sudo
 # 3  - Could not edit uEnv.txt
-# 4  - Could not copy file
-# 5  - Failed to create directory
-# 6  - Failed to install packages
-# 7  - Failed to install pip
-# 8  - Failed to install python module pycampbellcr1000
-# 9  - Failed to set cron job
-# 10 - Failed to set allowed user for incron
-# 11 - Failed to set incron job
+# 4  - Could not copy services
+# 5  - Could not update rc.d
+# 6  - Could not copy file
+# 7  - Failed to create directory
+# 8  - Failed to install packages
+# 9  - Failed to install pip
+# 10 - Failed to install python module pycampbellcr1000
+# 11 - Failed to set cron job
+# 12 - Failed to set allowed user for incron
+# 13 - Failed to set incron job
+# 14 - Failed to restart cron service
+# 15 - Failed to restart incron service
 ##
 
 #Path to install system
@@ -26,7 +30,7 @@ installPath=/root/bin
 installPathUp=/root
 
 # Ensure all required files are present
-if [ ! -f "send_data.sh"  -o ! -f "DataCollection.py" ]
+if [ ! -f "send_data.sh"  -o ! -f "DataCollection.py" -o ! -f "usb3g" -o ! -f "usb4g" ]
 then
     echo "Required files are missing!"
     exit 1
@@ -45,7 +49,29 @@ uartStat=$(echo dtb=am335x-boneblack-ttyO4.dtb >> /boot/uEnv.txt)
 if [ $? -ne 0 ]
 then
     echo -e "$uartStat\nFailed to setup uart4 support, exiting."
-    exit 2
+    exit 3
+fi
+
+# Copy and initialize services
+cpStat=$(cp usb* /etc/init.d/)
+if [ $? -ne 0 ]
+then
+    echo -e "$uartStat\nFailed to copy services, exiting."
+    exit 4
+else
+    3gStat=$(update-rc.d usb3g defaults)
+    if [ $? -ne 0 ]
+    then
+        echo -e "$3gStat\nFailed to update rc.d for usb3g, exiting."
+        exit 5
+    fi
+    4gStat=$(update-rc.d usb4g defaults)
+    if [ $? -ne 0 ]
+    then
+        echo -e "$4gStat\nFailed to update rc.d for usb4g, exiting."
+        exit 5
+    fi
+ 
 fi
 
 # Create and move required files to bin dir in /root/
@@ -57,7 +83,7 @@ then
     if [ $? -ne 0 ]
     then
         echo -e "$copyStat\nFailed to copy, exiting."
-        exit 2
+        exit 6
     fi
 else
     #Try to create bin directory
@@ -65,13 +91,13 @@ else
     if [ $? -ne 0 ]
     then
         echo -e "$mkdirStat \nDirectory could not be created, exiting."
-        exit 3
+        exit 7
     fi
     copyStat=$(cp send_data.sh DataCollection.py $installPath)
     if [ $? -ne 0 ]
     then
         echo -e "$copyStat\nFailed to copy, exiting."
-        exit 2
+        exit 5
     fi
 fi
 
@@ -80,7 +106,7 @@ aptStat=$(sudo apt-get -y install python incron)
 if [ $? -ne 0 ]
 then
     echo -e "$aptStat\nFailed to install required packages, exiting."
-    exit 4
+    exit 8
 fi
 
 # Install pip, the python package manager
@@ -90,7 +116,7 @@ if [ $? -ne 0 ]
 then
     echo -e "$pipStat\nFailed to install pip, exiting."
     rm get-pip.py
-    exit 5
+    exit 9
 fi
 rm get-pip.py
 
@@ -99,7 +125,7 @@ pycamStat=$(pip install pycampbellcr1000)
 if [ $? -ne 0 ]
 then
     echo -e "$pycamStat\nFailed to install python module, exiting."
-    exit 6
+    exit 10
 fi
 
 #TODO: ensure job doesn't already exist
@@ -108,7 +134,7 @@ cronStat=$(echo -e "*/15 *  * * *   root    python $installPath/DataCollection.p
 if [ $? -ne 0 ]
 then
     echo -e "$cronStat\nFailed to set cron job, exiting."
-    exit 7
+    exit 11
 fi
 
 #setup incron to auto-upload data
@@ -116,14 +142,14 @@ incronUserStat=$(echo -e "root" >> /etc/incron.allow)
 if [ $? -ne 0 ]
 then
     echo -e "$incronUserStat\nFailed to set user in incron, exiting."
-    exit 8
+    exit 12
 fi
 
 incronStat=$(echo -e "$installPathUp IN_MODIFY,IN_CREATE,IN_MOVED_TO $installPath/send_data.sh" >> /var/spool/incron/root)
 if [ $? -ne 0 ]
 then
     echo -e "$camStat\nFailed to set incron job, exiting."
-    exit 9
+    exit 13
 fi
 
 echo "Restarting services.."
@@ -131,13 +157,13 @@ cronResStatus=$(sudo service cron restart)
 if [ $? -ne 0 ]
 then
     echo -e "$cronResStatus\nFailed to restart cron, exiting."
-    exit 10
+    exit 14
 fi
 incronResStatus=$(sudo service incron restart)
 if [ $? -ne 0 ]
 then
     echo -e "$incronStatus\nFailed to restart incron, exiting."
-    exit 11
+    exit 15
 fi
 
 echo "Setup complete!"
