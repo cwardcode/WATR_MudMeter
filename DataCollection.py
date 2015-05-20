@@ -1,6 +1,6 @@
 # Author: Chris Ward
 # Date: 04/20/2015
-# Version: 5/08/2015
+# Version: 5/18/2015
 # Description: Reads in data from our CR850 data logger and stores to files based on table name.
 
 from datetime import datetime, timedelta
@@ -15,7 +15,7 @@ platform = platform.system()
 
 # Holds the device's mapped location
 if platform == 'Linux':
-    location = "/dev/ttyO4"
+    location = "dev/ttyO4"
 elif platform == 'Windows':
     location = "COM1"
 else:
@@ -37,13 +37,14 @@ start_date_form = datetime.now() - timedelta(minutes=15)
 end_date_form = datetime.now()
 
 """
-" function which takes in a table name, gathers its data and exports it as a CSV file for analysis.
+" Function which takes in a table name, gathers its data and exports it as a CSV file for analysis.
 " @:param table_name - name of table to collect data and export
 """
 
 
 def collect_data(table_name):
     exists = False
+    os.open('.filelock', os.O_WRONLY | os.O_CREAT)
     if os.path.exists(table_name + '.csv'):
         exists = True
     if platform == 'Linux':
@@ -59,10 +60,26 @@ def collect_data(table_name):
 
     os.write(table_file, table_csv.encode('UTF-8'))
     os.close(table_file)
+    os.remove('.filelock')
+
 
 """
-" Iterate through tables list, and collect data from each
+" "Main" function of the program. Creates a lock to enable prevention concurrent access when trying
+" to upload data.
 """
 
-for table in tables:
-    collect_data(table)
+
+def main():
+    # Create a lock file so that files can't be altered before we're finished.
+    os.open('.datalock', os.O_WRONLY | os.O_CREAT)
+
+    # Iterate through tables list, and collect data from each
+    for table in tables:
+        collect_data(table)
+    # Collection finished, remove lock
+    os.remove('.datalock')
+    return 0
+
+# Call main, execute program
+main()
+
