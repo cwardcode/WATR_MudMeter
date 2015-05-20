@@ -29,13 +29,6 @@
 installPath=/root/bin
 installPathUp=/root
 
-# Ensure all required files are present
-if [ ! -f "send_data.sh"  -o ! -f "DataCollection.py" -o ! -f "usb3g" -o ! -f "usb4g" ]
-then
-    echo "Required files are missing!"
-    exit 1
-fi
-
 # Check if user has root
 sudo=$(whoami)
 if [ $sudo != "root" ]
@@ -44,37 +37,51 @@ then
     exit 2
 fi
 
+# Ensure all required files are present
+echo -n "Verifying install files... "
+if [ ! -f "send_data.sh"  -o ! -f "DataCollection.py" -o ! -f "usb3g" -o ! -f "usb4g" ]
+then
+    echo "Required files are missing!"
+    exit 1
+fi
+echo "ok!"
+
 # Enable UART 4 in uEnv.txt
+echo -n "Enabling UART 5 in uEnv.txt... "
 uartStat=$(echo dtb=am335x-boneblack-ttyO4.dtb >> /boot/uEnv.txt)
 if [ $? -ne 0 ]
 then
     echo -e "$uartStat\nFailed to setup uart4 support, exiting."
     exit 3
 fi
+echo "ok!"
 
 # Copy and initialize services
+echo -n "Installing services... "
 cpStat=$(cp usb* /etc/init.d/)
 if [ $? -ne 0 ]
 then
     echo -e "$uartStat\nFailed to copy services, exiting."
     exit 4
 else
-    3gStat=$(update-rc.d usb3g defaults)
+    threeGStat=$(update-rc.d usb3g defaults)
     if [ $? -ne 0 ]
     then
-        echo -e "$3gStat\nFailed to update rc.d for usb3g, exiting."
+        echo -e "$threeGStat\nFailed to update rc.d for usb3g, exiting."
         exit 5
     fi
-    4gStat=$(update-rc.d usb4g defaults)
+    fourGStat=$(update-rc.d usb4g defaults)
     if [ $? -ne 0 ]
     then
-        echo -e "$4gStat\nFailed to update rc.d for usb4g, exiting."
+        echo -e "$fourGStat\nFailed to update rc.d for usb4g, exiting."
         exit 5
     fi
  
 fi
+echo "ok!"
 
 # Create and move required files to bin dir in /root/
+echo -n "Copying files..."
 if [ -d $installPath ]
 then
     # Try copying files over
@@ -100,17 +107,21 @@ else
         exit 5
     fi
 fi
+echo "ok!"
 
 # Install all required packages
+echo -n "Installing required packages..."
 aptStat=$(sudo apt-get -y install python incron)
 if [ $? -ne 0 ]
 then
     echo -e "$aptStat\nFailed to install required packages, exiting."
     exit 8
 fi
+echo "ok!"
 
 # Install pip, the python package manager
-wget https://bootstrap.pypa.io/get-pip.py
+echo -n "Installing Python PIP manager..."
+wget -q https://bootstrap.pypa.io/get-pip.py
 pipStat=$(python get-pip.py)
 if [ $? -ne 0 ]
 then
@@ -119,40 +130,48 @@ then
     exit 9
 fi
 rm get-pip.py
+echo "ok!"
 
 # Install required python module
+echo -n "Installing PyCampbell module..."
 pycamStat=$(pip install pycampbellcr1000)
 if [ $? -ne 0 ]
 then
     echo -e "$pycamStat\nFailed to install python module, exiting."
     exit 10
 fi
+echo "ok!"
 
-#TODO: ensure job doesn't already exist
 #setup cron to run script every 15 minutes
-cronStat=$(echo -e "*/15 *  * * *   root    python $installPath/DataCollection.py" >> /etc/crontab)
+echo -n "Adding data collection job to cron..."
+cronStat=$((crontab -l; echo -e "*/15 *  * * *   root    python $installPath/DataCollection.py") | sort - | uniq - | crontab -)
 if [ $? -ne 0 ]
 then
     echo -e "$cronStat\nFailed to set cron job, exiting."
     exit 11
 fi
+echo "ok!"
 
 #setup incron to auto-upload data
+echo -n "Adding root user to incron..."
 incronUserStat=$(echo -e "root" >> /etc/incron.allow)
 if [ $? -ne 0 ]
 then
     echo -e "$incronUserStat\nFailed to set user in incron, exiting."
     exit 12
 fi
+echo "ok!"
 
+echo -n "Adding auto-upload to incron..."
 incronStat=$(echo -e "$installPathUp IN_MODIFY,IN_CREATE,IN_MOVED_TO $installPath/send_data.sh" >> /var/spool/incron/root)
 if [ $? -ne 0 ]
 then
     echo -e "$camStat\nFailed to set incron job, exiting."
     exit 13
 fi
+echo "ok!"
 
-echo "Restarting services.."
+echo -n "Restarting services.."
 cronResStatus=$(sudo service cron restart)
 if [ $? -ne 0 ]
 then
@@ -165,6 +184,6 @@ then
     echo -e "$incronStatus\nFailed to restart incron, exiting."
     exit 15
 fi
-
+echo "ok!"
 echo "Setup complete!"
 exit 0
