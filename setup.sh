@@ -23,6 +23,7 @@
 
 #Path to install system
 installPath=/root/bin
+installPathUp=/root
 
 # Ensure all required files are present
 if [ ! -f "send_data.sh"  -o ! -f "DataCollection.py" ]
@@ -118,7 +119,7 @@ then
     exit 8
 fi
 
-incronStat=$(echo -e "/root IN_MODIFY,IN_CREATE,IN_MOVED_TO $installPath/send_data.sh" >> /var/spool/incron/root)
+incronStat=$(echo -e "$installPathUp IN_MODIFY,IN_CREATE,IN_MOVED_TO $installPath/send_data.sh" >> /var/spool/incron/root)
 if [ $? -ne 0 ]
 then
     echo -e "$camStat\nFailed to set incron job, exiting."

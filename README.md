@@ -1,9 +1,17 @@
 # CampbellDataCollection
-A Python script allowing data collection from a Campbell scientific datalogger. Just enter a start date and an end date to pull the data.
+A system allowing data collection from a Campbell scientific datalogger.
 
-Requirements to run: 
+#Requirements:
+BeagleBone Black running Debian Jessie
+Internet Connection (I'm using a GSM Modem)
+UART4 serial cape
 
-Python
+#To use:
+1) Clone repo
+2) Run setup.sh as sudo
 
-Python package: pycampbellcr1000 (https://pypi.python.org/pypi/PyCampbellCR1000)
+#TODO
+1) Add custom install paths
+2) Ensure no duplicate entries in crontab/incrontab
+3) Add GSM USB linux services to repo and add support in install script
 
