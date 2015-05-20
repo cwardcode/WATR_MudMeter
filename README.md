@@ -11,7 +11,3 @@
 ##To use:
 1. Clone repo
 2. Run setup.sh as sudo
-
-##TODO
-1. Add custom install paths
-2. Ensure no duplicate entries in crontab/incrontab

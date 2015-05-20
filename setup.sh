@@ -25,10 +25,6 @@
 # 15 - Failed to restart incron service
 ##
 
-#Path to install system
-installPath=/root/bin
-installPathUp=/root
-
 # Check if user has root
 sudo=$(whoami)
 if [ $sudo != "root" ]
@@ -36,6 +32,13 @@ then
     echo "Must run script as root or via sudo!"
     exit 2
 fi
+
+#Prompt user for install path
+read -p "Please enter desired install path [/root/bin]: " installPath
+installPath=${installPathath:-/root/bin}
+installPathUp=${installPath%/*}
+echo -e "Installing to $installPath"
+echo -e "Up Directory is $installPathUp"
 
 # Ensure all required files are present
 echo -n "Verifying install files... "
@@ -163,7 +166,7 @@ fi
 echo "ok!"
 
 echo -n "Adding auto-upload to incron..."
-incronStat=$(echo -e "$installPathUp IN_MODIFY,IN_CREATE,IN_MOVED_TO $installPath/send_data.sh" >> /var/spool/incron/root)
+incronStat=$((incrontab -l;echo -e "$installPathUp IN_MODIFY,IN_CREATE,IN_MOVED_TO $installPath/send_data.sh") | sort - | uniq - | incrontab -)
 if [ $? -ne 0 ]
 then
     echo -e "$camStat\nFailed to set incron job, exiting."
