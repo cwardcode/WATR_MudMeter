@@ -38,7 +38,6 @@ read -p "Please enter desired install path [/root/bin]: " installPath
 installPath=${installPathath:-/root/bin}
 installPathUp=${installPath%/*}
 echo -e "Installing to $installPath"
-echo -e "Up Directory is $installPathUp"
 
 # Ensure all required files are present
 echo -n "Verifying install files... "
@@ -97,7 +96,7 @@ then
     fi
 else
     #Try to create bin directory
-    mkdirStat=$(mkdir $installPath)
+    mkdirStat=$(mkdir -p $installPath)
     if [ $? -ne 0 ]
     then
         echo -e "$mkdirStat \nDirectory could not be created, exiting."
