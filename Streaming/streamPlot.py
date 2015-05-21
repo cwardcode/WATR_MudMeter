@@ -67,7 +67,11 @@ while i<N:
     y = NTU[i] 
     stream_link.write(dict(x=x, y=y))
     i += 1
-
+    if i == N:
+	i=0
+	NTU = get_csv_data('./data/TableEachScan.csv','TurbNTU')
+	Date = get_csv_data('./data/TableEachScan.csv','Datetime')
+      	print("New data loaded: " + str(NTU)) 
     #time.sleep(0.08)
     time.sleep(1.00)
 
