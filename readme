@@ -1,7 +1,8 @@
 # CampbellDataStreaming
 ## Description
 - A system allowing data collection from a Campbell scientific datalogger using
-  a BeagleBone Black and Python, and automatically streaming data statistics to plot.ly.
+  a BeagleBone Black and Python, and automatically streaming data statistics to
+  plot.ly.
 
 ## Requirements:
 - BeagleBone Black running Debian Jessie
@@ -9,8 +10,10 @@
 - UART4 RS232 cape
 
 ## To Do:
-   - How to collect data such that it isn't graphed faster than it's collected. (overwrite collected file)
-   - Either that, or keep index of last row read, and start from there on next iteration. (append to collected file)
+   - How to collect data such that it isn't graphed faster than it's collected.
+     (overwrite collected file)
+   - Either that, or keep index of last row read, and start from there on next 
+     iteration. (append to collected file)
 
 ## To start logging:
 1. Clone repo
