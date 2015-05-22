@@ -14,14 +14,15 @@ stream_obj = Stream(
     maxpoints=80
 )
 
-trace1 = Scatter(
+turbidity = Scatter(
     x=[],
     y=[],
     mode='lines+markers',
-    stream=stream_obj
+    stream=stream_obj,
+    name="Turbidity (NTU)"
 )
 
-data = Data([trace1])
+data = Data([turbidity])
 
 layout = Layout(
     title='NTU Over Time',
@@ -67,21 +68,24 @@ i = 0
 N = Date.size
 
 time.sleep(5)
-
-while i < N:
-    x = Date[i]
-    y = NTU[i] 
-    stream_link.write(dict(x=x, y=y))
-    i += 1
-    if i == N:
-        i = 0
-        NTU = []
-        Date = []
-        NTU = get_csv_data('./data/TableEachScan.csv', 'TurbNTU', lastLine + 1)
-        Date = get_csv_data('./data/TableEachScan.csv', 'Datetime', lastLine + 1)
-        lastLine = lastLine + Date.size
-        print("New data EOL is: " + str(lastLine))
-        N = Date.size
-    time.sleep(0.50)
-
+try:
+    while i < N:
+        print("iteration: " + str(i))
+        x = Date[i]
+        y = NTU[i] 
+        stream_link.write(dict(x=x, y=y))
+        i += 1
+        if i == N:
+            i = 0
+            NTU = []
+            Date = []
+            NTU = get_csv_data('./data/TableEachScan.csv', 'TurbNTU', lastLine + 1)
+            Date = get_csv_data('./data/TableEachScan.csv', 'Datetime', lastLine + 1)
+            lastLine = lastLine + Date.size
+            print("New data EOF is: " + str(lastLine))
+            N = Date.size
+        time.sleep(0.50)
+except StopIteration:
+    print("oops! out of data to send :(")
+    pass
 stream_link.close()
