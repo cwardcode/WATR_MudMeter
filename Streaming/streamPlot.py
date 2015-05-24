@@ -5,16 +5,17 @@ import plotly.tools as tls
 import numpy as np
 import time
 
-
+# Get Streaming Tokens from plot.ly
 stream_ids = tls.get_credentials_file()['stream_ids']
-
+# Grab first Token in list
 stream_id = stream_ids[0]
-
+# Create the stream
 stream_obj = Stream(
     token=stream_id,
     maxpoints=80
 )
 
+# Set up our plot
 turbidity = Scatter(
     x=[],
     y=[],
@@ -23,8 +24,10 @@ turbidity = Scatter(
     name="Turbidity (NTU)"
 )
 
+# Set up data sets
 data = Data([turbidity])
 
+# Configure the Layout
 layout = Layout(
     title='NTU Over Time',
     xaxis=XAxis(
@@ -35,16 +38,34 @@ layout = Layout(
     )
 )
 
+# Create the plot itself
 fig = Figure(data=data, layout=layout)
-
+# Generate plot.ly URL based on name
 unique_url = py.plot(fig, filename='NTUDataStream')
-
+# Holds the connection to the stream
 stream_link = py.Stream(stream_id)
-
+# Holds the last line read in the file
 lastLine = 0
+# Holds whether the file has been read
 firstPass = True
+# 5 second timer
+fpTimer = True
+# Holds location to the data set
+dataFile = './examples/small/d1.csv'
+# Holds the column name containing data we're monitoring
+dataColm = 'TurbNTU'
+# Holds the column name containing the date
+dateColm = 'Datetime'
+
 
 def get_csv_data(filepath, row_id, row_num):
+    """
+    " get_csv_data: Gets data from a csv file
+    " @:argument filepath - path to csv file
+    " @:argument row_id - Name of column to collect data
+    " @:argument row_num - line number to start reading from
+    " @:return an nparray of all collected data
+    """
     data_array = []
     with open(filepath, 'r') as data_file:
         reader = csv.reader(data_file)
@@ -53,70 +74,76 @@ def get_csv_data(filepath, row_id, row_num):
         while reader.line_num != (row_num + 1):
             reader.next()
         for row in reader:
-            print("Getting Row:" + str(row[colid]))
             data_array.append(row[colid])
         nparray = np.array(data_array)
         return nparray
 
+
 def update_plot(line):
+    """
+    " update_plot: Updates the plot.ly plot with new data continuously
+    " @:argument line - the line number last read from the previous call
+    """
     global stream_link
     global lastLine
+    global dataFile
+    global dataColm
+    global dateColm
     global firstPass
+    global fpTimer
 
-    NTU = None
-    Date = None
-
+    """
+    " Check to see if it is the first time this method was called, so we can
+    " keep track of where to read data from. If first pass, start reading at 0.
+    """
     if firstPass:
-        print("first pass!")
-        NTU = get_csv_data('./examples/small/d1.csv', 'TurbNTU', 0)
-        Date = get_csv_data('./examples/small/d1.csv', 'Datetime', 0)
+        NTU = get_csv_data(dataFile, dataColm, 0)
+        Date = get_csv_data(dataFile, dateColm, 0)
         firstPass = False
         lastLine = Date.size
     else:
-
-        print("Not second pass.. Line is: " + str(line))
-        NTU = get_csv_data('./examples/small/d1.csv', 'TurbNTU', line)
+        print("Loading new, starting from line: " + str(line))
+        stream_link.write(dict(), dict(title="NTU Over Time (Waiting for new data)"))
+        NTU = get_csv_data(dataFile, dataColm, line)
         print("Just got NTU = " + str(NTU))
-        Date = get_csv_data('./examples/small/d1.csv', 'Datetime', line)
+        Date = get_csv_data(dataFile, dateColm, line)
         print("Just got Date = " + str(Date))
-    lastLine = Date.size + line
+        lastLine = Date.size + line
     print("lastLine = " + str(lastLine))
 
+    # (Re)set counter to 0
     i = 0
-    N = lastLine + line
+    # Set N to be size of data loaded
+    N = Date.size
+
     print("N = " + str(N))
     print("NTU = " + str(NTU))
     print("Date = " + str(Date))
-    time.sleep(5)
+
+    # Wait for 5 seconds for tab to reload
+    if fpTimer:
+        time.sleep(5)
+        fpTimer = False
+    else:
+        time.sleep(1)
+
+    """
+    " Iterate through array and plot points
+    """
     while i < N:
         x = Date[i]
         y = NTU[i]
         print("Plotting: Date: " + str(x) + ", NTU: " + str(y))
-        stream_link.write(dict(x=x, y=y))
+        stream_link.write(dict(x=x, y=y), dict(title="NTU Over Time"))
         i += 1
-        if i == N:
-            i = 0
-            NTU = None
-            Date = None
-            print("i = n getting new data! lastLine: " + str(lastLine + 1))
-            # NTU = get_csv_data('./data/TableEachScan.csv', 'TurbNTU', lastLine + 1)
-            # Date = get_csv_data('./data/TableEachScan.csv', 'Datetime', lastLine + 1)
-            NTU = get_csv_data('./examples/small/d1.csv', 'TurbNTU', lastLine + 1)
-            Date = get_csv_data('./examples/small/d1.csv', 'Datetime', lastLine + 1)
-            print("NTU has: " + str(NTU))
-            lastLine = lastLine + Date.size
-            print("New data EOF is: " + str(lastLine))
-            N = Date.size
-        time.sleep(0.50)
+        time.sleep(0.80)
 
+# Open connection to plot.ly server
 stream_link.open()
 
+# Infinitely collect data
 while True:
-    try:
-        update_plot(lastLine)
-    except StopIteration:
-        print("oops! out of data to send :( Waiting 30 seconds and trying again!")
-        time.sleep(5)
-        pass
+    update_plot(lastLine)
 
+# Close stream to server
 stream_link.close()
