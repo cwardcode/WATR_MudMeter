@@ -5,6 +5,7 @@ import plotly.tools as tls
 import numpy as np
 import time
 
+
 # Get Streaming Tokens from plot.ly
 stream_ids = tls.get_credentials_file()['stream_ids']
 # Grab first Token in list
@@ -56,6 +57,8 @@ dataFile = './examples/small/d1.csv'
 dataColm = 'TurbNTU'
 # Holds the column name containing the date
 dateColm = 'Datetime'
+# Holds starting index value
+startIndex = 0
 
 
 def get_csv_data(filepath, row_id, row_num):
@@ -91,14 +94,15 @@ def update_plot(line):
     global dateColm
     global firstPass
     global fpTimer
+    global startIndex
 
     """
     " Check to see if it is the first time this method was called, so we can
     " keep track of where to read data from. If first pass, start reading at 0.
     """
     if firstPass:
-        NTU = get_csv_data(dataFile, dataColm, 0)
-        Date = get_csv_data(dataFile, dateColm, 0)
+        NTU = get_csv_data(dataFile, dataColm, startIndex)
+        Date = get_csv_data(dataFile, dateColm, startIndex)
         firstPass = False
         lastLine = Date.size
     else:
@@ -138,12 +142,17 @@ def update_plot(line):
         i += 1
         time.sleep(0.80)
 
+
 # Open connection to plot.ly server
 stream_link.open()
 
 # Infinitely collect data
 while True:
-    update_plot(lastLine)
+    try:
+        update_plot(lastLine)
+    except Exception:
+        print("Exception thrown!!!")
+        pass
 
 # Close stream to server
 stream_link.close()
