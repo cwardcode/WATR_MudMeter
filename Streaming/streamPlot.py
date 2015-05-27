@@ -7,14 +7,13 @@
 ##
 
 from datetime import datetime, timedelta
-from plotly.graph_objs import Stream, Scatter, Layout, Data, Figure, XAxis,YAxis
+from plotly.graph_objs import Stream, Scatter, Layout, Data, Figure, XAxis, YAxis
 from pycampbellcr1000 import CR1000, utils
-import csv
 import platform
 import plotly.plotly as py
 import plotly.tools as tls
-import numpy as np
 import os
+import threading
 import time
 
 # Check system platform, if windows, we need to open files in binary mode
@@ -26,14 +25,13 @@ elif platform == 'Windows':
     location = "COM1"
 else:
     location = "COM1"
+
 # Holds the port on which we're communicating with the device
 port = "115200"
 # The device we're connecting to,
-time1=datetime.now()
-print("waiting to connect to device... Time start: " + str(time1))
 device = CR1000.from_url('serial:/' + location + ":" + port)
-time2=datetime.now()
-print("connected, time taken to connect: "+ str(time2-time1))
+# Get all tables from device
+tables = device.list_tables()
 # Get Streaming Tokens from plot.ly
 stream_ids = tls.get_credentials_file()['stream_ids']
 # Grab first Token in list
@@ -54,7 +52,7 @@ turbidity = Scatter(
 )
 
 # Set up data sets
-data = Data([turbidity])
+plot_data = Data([turbidity])
 
 # Configure the Layout
 layout = Layout(
@@ -68,52 +66,46 @@ layout = Layout(
 )
 
 # Create the plot itself
-fig = Figure(data=data, layout=layout)
+fig = Figure(data=plot_data, layout=layout)
 # Generate plot.ly URL based on name
-unique_url = py.plot(fig, filename='NTUDataStream-Testing')
+unique_url = py.plot(fig, filename='NTUDataStream')
 # Holds the connection to the stream
 stream_link = py.Stream(stream_id)
 # Holds the last line read in the file
 lastLine = 0
 # Holds whether the file has been read
 firstPass = True
-
-# Holds location to the data set
-#dataFile = '.\data\TableEachScan.csv'
 # Holds the column name containing data we're monitoring
 dataColm = 'TurbNTU'
 # Holds the column name containing the date
 dateColm = 'Datetime'
 # Holds starting index value
 startIndex = 0
-updating = False
+# Holds whether update_plot is currently running
+collecting = False
+
+
 def update_plot(table):
     """
     " update_plot: Updates the plot.ly plot with new data continuously
     " @:argument line - the line number last read from the previous call
     """
-    print("update_plot called")
     global stream_link
     global lastLine
-    global dataFile
     global dataColm
     global dateColm
     global firstPass
-    global fpTimer
     global startIndex
     global device
-    global updating
-    
-    updating = True
-    
+
     # Start date for data  collection, should be fifteen minutes in the past
-    start_date_form = datetime.now() - timedelta(seconds=5)
+    sTime = datetime.now() - timedelta(seconds=5)
 
     # End date for  data collection, should be now, to complete our 15 minute interval
-    end_date_form = datetime.now()
+    eTime = datetime.now()
     
     # Get new data from the logger
-    newData = device.get_data(table,start_date_form,end_date_form)
+    newData = device.get_data(table, sTime, eTime)
     
     seen = set()
     deDupData = []
@@ -129,7 +121,52 @@ def update_plot(table):
         print("Plotting: Date: " + str(x) + ", NTU: " + str(y))
         stream_link.write(dict(x=x, y=y), dict(title="NTU Over Time"))
         time.sleep(0.80)
-    updating=False
+
+
+def collect_data(table_name):
+    # Holds whether the file already exists
+    exists = False
+
+    # Start date for data  collection, should be fifteen minutes in the past
+    start_date_form = datetime.now() - timedelta(minutes=15)
+
+    # End date for  data collection, should be now, to complete our 15 minute interval
+    end_date_form = datetime.now()
+
+    os.open('.filelock', os.O_WRONLY | os.O_CREAT)
+    if os.path.exists(table_name + '.csv'):
+        exists = True
+    if platform == 'Linux':
+        table_file = os.open(table_name + '.csv', os.O_WRONLY | os.O_APPEND | os.O_CREAT)
+    else:
+        table_file = os.open(table_name + '.csv', os.O_BINARY | os.O_WRONLY | os.O_APPEND | os.O_CREAT)
+    table_data = device.get_data(table_name, start_date_form, end_date_form)
+    if exists:
+        table_csv = utils.dict_to_csv(table_data, ",", header=False)
+    else:
+        table_csv = utils.dict_to_csv(table_data, ",", header=True)
+
+    os.write(table_file, table_csv.encode('UTF-8'))
+    os.close(table_file)
+    os.remove('.filelock')
+
+    return 0
+
+def get_data():
+    global collecting
+    collecting = True
+
+    os.open('.datalock', os.O_WRONLY | os.O_CREAT)
+    print("in get_data. Current time is: " + str(datetime.now()))
+    global tables
+
+    for table in tables:
+        collect_data(table)
+
+    os.remove('.datalock')
+    collecting = False
+
+    return 0
 
 """
 " Main function of the program, opens stream and allows plot to update.
@@ -137,24 +174,29 @@ def update_plot(table):
 def main():
     global stream_link
     global lastLine
-    global updating
+    global collecting
+    # 15 minutes = 900 seconds
+    FIFTN_MINUTES_N_SECS = 5
     # Open connection to plot.ly server
     stream_link.open()
-    # Infinitely collect data
-    while True and not updating:
-        update_plot('TableEachScan')
-        #Wait 5 seconds before updating
-        time.sleep(5)
-        stream_link.heartbeat()
-            
+    # Collect data every 15 minutes
+    # TODO FIX thread
+    threading.Timer(FIFTN_MINUTES_N_SECS, get_data()).start()
+    # Update plot continuously
+    while True:
+        if not collecting:
+            update_plot('TableEachScan')
+            # Wait 5 seconds before updating
+            time.sleep(5)
+            # Keep link alive
+            stream_link.heartbeat()
 
     # Close stream to server
     stream_link.close()
 
 # Call main, execute program
-# catch any exception TODO: fix
 try:
     main()
-except Exception:
-    print("Exception occurred")
+except Exception, e:
+    print("Exception occurred: " + str(e))
     pass
