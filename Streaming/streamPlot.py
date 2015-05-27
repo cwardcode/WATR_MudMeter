@@ -9,10 +9,10 @@
 from datetime import datetime, timedelta
 from plotly.graph_objs import Stream, Scatter, Layout, Data, Figure, XAxis, YAxis
 from pycampbellcr1000 import CR1000, utils
+import os
 import platform
 import plotly.plotly as py
 import plotly.tools as tls
-import os
 import threading
 import time
 
@@ -25,9 +25,12 @@ elif platform == 'Windows':
     location = "COM1"
 else:
     location = "COM1"
-
 # Holds the port on which we're communicating with the device
 port = "115200"
+# Holds the column name containing data we're monitoring
+dataColm = 'TurbNTU'
+# Holds the column name containing the date
+dateColm = 'Datetime'
 # The device we're connecting to,
 device = CR1000.from_url('serial:/' + location + ":" + port)
 # Get all tables from device
@@ -71,16 +74,6 @@ fig = Figure(data=plot_data, layout=layout)
 unique_url = py.plot(fig, filename='NTUDataStream')
 # Holds the connection to the stream
 stream_link = py.Stream(stream_id)
-# Holds the last line read in the file
-lastLine = 0
-# Holds whether the file has been read
-firstPass = True
-# Holds the column name containing data we're monitoring
-dataColm = 'TurbNTU'
-# Holds the column name containing the date
-dateColm = 'Datetime'
-# Holds starting index value
-startIndex = 0
 # Holds whether update_plot is currently running
 collecting = False
 
@@ -88,14 +81,11 @@ collecting = False
 def update_plot(table):
     """
     " update_plot: Updates the plot.ly plot with new data continuously
-    " @:argument line - the line number last read from the previous call
+    " @:argument table - the table from which we're collecting data
     """
     global stream_link
-    global lastLine
     global dataColm
     global dateColm
-    global firstPass
-    global startIndex
     global device
 
     # Start date for data  collection, should be fifteen minutes in the past
@@ -103,27 +93,34 @@ def update_plot(table):
 
     # End date for  data collection, should be now, to complete our 15 minute interval
     eTime = datetime.now()
-    
+
     # Get new data from the logger
     newData = device.get_data(table, sTime, eTime)
-    
+
     seen = set()
     deDupData = []
+
     for d in newData:
         row = tuple(d.items())
         if row not in seen:
             seen.add(row)
             deDupData.append(d)
-    print("obtained data")
+
     for i in deDupData:
-        x = i['Datetime']
-        y = i['TurbNTU']
+        x = i[dateColm]
+        y = i[dataColm]
         print("Plotting: Date: " + str(x) + ", NTU: " + str(y))
         stream_link.write(dict(x=x, y=y), dict(title="NTU Over Time"))
         time.sleep(0.80)
 
+    return 0
+
 
 def collect_data(table_name):
+    """
+    " Function which takes in a table name, gathers its data and exports it as a CSV file for analysis.
+    " @:param table_name - name of table to collect data and export
+    """
     # Holds whether the file already exists
     exists = False
 
@@ -149,16 +146,23 @@ def collect_data(table_name):
     os.write(table_file, table_csv.encode('UTF-8'))
     os.close(table_file)
     os.remove('.filelock')
-
     return 0
 
 def get_data():
+    """
+    " Collects data from the logger every 15 minutes and stores in file to send
+    "
+    """
     global collecting
+    global tables
+
     collecting = True
+    # 15 minutes = 900 seconds
+    FIFTN_MINUTES_N_SECS = 900
+
+    threading.Timer(FIFTN_MINUTES_N_SECS, get_data).start()
 
     os.open('.datalock', os.O_WRONLY | os.O_CREAT)
-    print("in get_data. Current time is: " + str(datetime.now()))
-    global tables
 
     for table in tables:
         collect_data(table)
@@ -172,16 +176,13 @@ def get_data():
 " Main function of the program, opens stream and allows plot to update.
 """
 def main():
-    global stream_link
-    global lastLine
     global collecting
-    # 15 minutes = 900 seconds
-    FIFTN_MINUTES_N_SECS = 5
+    global stream_link
+
     # Open connection to plot.ly server
     stream_link.open()
     # Collect data every 15 minutes
-    # TODO FIX thread
-    threading.Timer(FIFTN_MINUTES_N_SECS, get_data()).start()
+    get_data()
     # Update plot continuously
     while True:
         if not collecting:
@@ -190,9 +191,12 @@ def main():
             time.sleep(5)
             # Keep link alive
             stream_link.heartbeat()
+        else:
+            print("waiting to finish sending data")
 
     # Close stream to server
     stream_link.close()
+    return 0
 
 # Call main, execute program
 try:
