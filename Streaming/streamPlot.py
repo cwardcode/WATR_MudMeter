@@ -29,6 +29,7 @@ else:
 port = "115200"
 # Holds the column name containing data we're monitoring
 dataColm = 'TurbNTU'
+dataColm2 = 'TurbNTU2'
 # Holds the column name containing the date
 dateColm = 'Datetime'
 # The device we're connecting to,
@@ -41,21 +42,29 @@ stream_ids = tls.get_credentials_file()['stream_ids']
 stream_id = stream_ids[0]
 # Create the stream
 stream_obj = Stream(
-    token=stream_id,
-    maxpoints=80
+    token=stream_id
 )
 
-# Set up our plot
+# Set up our traces
 turbidity = Scatter(
     x=[],
     y=[],
     mode='lines+markers',
     stream=stream_obj,
-    name="Turbidity (NTU)"
+    name="Turbidity Sensor (NTU)"
+)
+
+turbidity2 = Scatter(
+    x=[],
+    y=[],
+    mode='lines+markers',
+    stream=Stream(
+        token=stream_ids[1],
+    name="Turbidity Sensor 2 (NTU)"
 )
 
 # Set up data sets
-plot_data = Data([turbidity])
+plot_data = Data([turbidity, turbidity2])
 
 # Configure the Layout
 layout = Layout(
@@ -74,6 +83,7 @@ fig = Figure(data=plot_data, layout=layout)
 unique_url = py.plot(fig, filename='NTUDataStream')
 # Holds the connection to the stream
 stream_link = py.Stream(stream_id)
+turb2_link = py.Stream(stream_ids[1])
 # Holds whether update_plot is currently running
 collecting = False
 
@@ -83,13 +93,15 @@ def update_plot(table):
     " update_plot: Updates the plot.ly plot with new data continuously
     " @:argument table - the table from which we're collecting data
     """
-    global stream_link
     global dataColm
+    global dataColm2
     global dateColm
     global device
+    global stream_link
+    global turb2_link
 
     # Start date for data  collection, should be fifteen minutes in the past
-    sTime = datetime.now() - timedelta(seconds=5)
+    sTime = datetime.now() - timedelta(seconds=7)
 
     # End date for  data collection, should be now, to complete our 15 minute interval
     eTime = datetime.now()
@@ -97,20 +109,13 @@ def update_plot(table):
     # Get new data from the logger
     newData = device.get_data(table, sTime, eTime)
 
-    seen = set()
-    deDupData = []
-
-    for d in newData:
-        row = tuple(d.items())
-        if row not in seen:
-            seen.add(row)
-            deDupData.append(d)
-
-    for i in deDupData:
+    for i in newData:
         x = i[dateColm]
         y = i[dataColm]
+        y1 = i[dataColm2]
         print("Plotting: Date: " + str(x) + ", NTU: " + str(y))
-        stream_link.write(dict(x=x, y=y), dict(title="NTU Over Time"))
+        stream_link.write(dict(x=x, y=y))
+        turb2_link.write(dict(x=x, y=y1))
         time.sleep(0.80)
 
     return 0
@@ -178,9 +183,11 @@ def get_data():
 def main():
     global collecting
     global stream_link
+    global turb2_link
 
     # Open connection to plot.ly server
     stream_link.open()
+    turb2_link.open()
     # Collect data every 15 minutes
     get_data()
     # Update plot continuously
@@ -195,6 +202,7 @@ def main():
             print("waiting to finish sending data")
 
     # Close stream to server
+    turb2_link.close()
     stream_link.close()
     return 0
 
