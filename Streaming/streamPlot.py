@@ -27,9 +27,11 @@ else:
     location = "COM1"
 # Holds the port on which we're communicating with the device
 port = "115200"
-# Holds the column name containing data we're monitoring
+# Holds the column names containing data we're monitoring
 dataColm = 'TurbNTU'
 dataColm2 = 'TurbNTU2'
+# Holds the table that contains the data we're plotting
+dataTable = 'TableEachScan'
 # Holds the column name containing the date
 dateColm = 'Datetime'
 # The device we're connecting to,
@@ -182,6 +184,7 @@ def get_data():
 """
 def main():
     global collecting
+    global dataTable
     global stream_link
     global turb2_link
 
@@ -193,7 +196,7 @@ def main():
     # Update plot continuously
     while True:
         if not collecting:
-            update_plot('TableEachScan')
+            update_plot(dataTable)
             # Wait 5 seconds before updating
             time.sleep(5)
             # Keep link alive
