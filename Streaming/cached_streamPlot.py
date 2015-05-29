@@ -1,4 +1,4 @@
-from plotly.graph_objs import Stream, Scatter, Layout, Data, Figure, XAxis,YAxis
+from plotly.graph_objs import Legend, Font, Stream, Scatter, Layout, Data, Figure, XAxis, YAxis
 import csv
 import plotly.plotly as py
 import plotly.tools as tls
@@ -16,7 +16,7 @@ stream_obj = Stream(
     maxpoints=80
 )
 
-# Set up our plot
+# Set up our plot's traces
 turbidity = Scatter(
     x=[],
     y=[],
@@ -25,13 +25,32 @@ turbidity = Scatter(
     name="Turbidity (NTU)"
 )
 
+turbidity2 = Scatter(
+    x=[],
+    y=[],
+    mode='lines+markers',
+    stream=Stream(
+        token=stream_ids[1],
+        maxpoints=80
+    ),
+    name="Turbidity Sensor 2 (NTU)"
+)
+
+
 # Set up data sets
-data = Data([turbidity])
+data = Data([turbidity, turbidity2])
 
 # Configure the Layout
 layout = Layout(
     title='NTU Over Time',
-    xaxis=XAxis(
+    showlegend=True,
+    legend=Legend(
+        y=0.5,
+        font=Font(
+            size=12
+        )
+    ),
+   xaxis=XAxis(
         title='Date Time'
     ),
     yaxis=YAxis(
@@ -45,6 +64,7 @@ fig = Figure(data=data, layout=layout)
 unique_url = py.plot(fig, filename='NTUDataStream')
 # Holds the connection to the stream
 stream_link = py.Stream(stream_id)
+turb2_link = py.Stream(stream_ids[1])
 # Holds the last line read in the file
 lastLine = 0
 # Holds whether the file has been read
@@ -55,6 +75,7 @@ fpTimer = True
 dataFile = './examples/small/d1.csv'
 # Holds the column name containing data we're monitoring
 dataColm = 'TurbNTU'
+dataColm2 = 'TurbNTU2'
 # Holds the column name containing the date
 dateColm = 'Datetime'
 # Holds starting index value
@@ -87,14 +108,15 @@ def update_plot(line):
     " update_plot: Updates the plot.ly plot with new data continuously
     " @:argument line - the line number last read from the previous call
     """
-    global stream_link
-    global lastLine
-    global dataFile
     global dataColm
+    global dataColm2
     global dateColm
+    global dataFile
     global firstPass
     global fpTimer
+    global lastLine
     global startIndex
+    global stream_link
 
     """
     " Check to see if it is the first time this method was called, so we can
@@ -102,28 +124,21 @@ def update_plot(line):
     """
     if firstPass:
         NTU = get_csv_data(dataFile, dataColm, startIndex)
+        NTU = get_csv_data(dataFile, dataColm2, startIndex)
         Date = get_csv_data(dataFile, dateColm, startIndex)
         firstPass = False
         lastLine = Date.size
     else:
-        print("Loading new, starting from line: " + str(line))
         stream_link.write(dict(), dict(title="NTU Over Time (Waiting for new data)"))
         NTU = get_csv_data(dataFile, dataColm, line)
-        print("Just got NTU = " + str(NTU))
+        NTU2 = get_csv_data(dataFile, dataColm2, line)
         Date = get_csv_data(dataFile, dateColm, line)
-        print("Just got Date = " + str(Date))
         lastLine = Date.size + line
-    print("lastLine = " + str(lastLine))
 
     # (Re)set counter to 0
     i = 0
     # Set N to be size of data loaded
     N = Date.size
-
-    print("N = " + str(N))
-    print("NTU = " + str(NTU))
-    print("Date = " + str(Date))
-
     # Wait for 5 seconds for tab to reload
     if fpTimer:
         time.sleep(5)
@@ -137,14 +152,17 @@ def update_plot(line):
     while i < N:
         x = Date[i]
         y = NTU[i]
+        y1 = NTU2[i]
         print("Plotting: Date: " + str(x) + ", NTU: " + str(y))
-        stream_link.write(dict(x=x, y=y), dict(title="NTU Over Time"))
+        stream_link.write(dict(x=x, y=y), dict(title="NTU Over Time (Waiting for new data)"))
+        turb2_link.write(dict(x=x, y=y1), dict(title="NTU Over Time (Waiting for new data)"))
         i += 1
         time.sleep(0.80)
 
 
 # Open connection to plot.ly server
 stream_link.open()
+turb2_link.open()
 
 # Infinitely collect data
 while True:
@@ -155,4 +173,5 @@ while True:
         pass
 
 # Close stream to server
+turb2_link.close()
 stream_link.close()
