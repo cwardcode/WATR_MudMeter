@@ -200,7 +200,8 @@ def main():
             stream_link.heartbeat()
         else:
             print("waiting to finish sending data")
-
+            # Wait 15 seconds to finish sending data
+            time.sleep(15)
     # Close stream to server
     turb2_link.close()
     stream_link.close()
