@@ -44,17 +44,17 @@ tables = device.list_tables()
 stream_ids = tls.get_credentials_file()['stream_ids']
 # Grab first Token in list
 stream_id = stream_ids[0]
-# Create the stream
-stream_obj = Stream(
-    token=stream_id
-)
+
 
 # Set up our traces
 turbidity = Scatter(
     x=[],
     y=[],
     mode='lines+markers',
-    stream=stream_obj,
+    stream=Stream(
+        token=stream_id,
+        maxpoints=80
+    ),
     name="Turbidity Sensor (NTU)"
 )
 
@@ -63,7 +63,9 @@ turbidity2 = Scatter(
     y=[],
     mode='lines+markers',
     stream=Stream(
-        token=stream_ids[1]),
+        token=stream_ids[1],
+        maxpoints=80
+    ),
     name="Turbidity Sensor 2 (NTU)"
 )
 
@@ -160,6 +162,8 @@ def collect_data(table_name):
 
     os.remove('.filelock')
     return 0
+
+
 def put_data(file_name):
     """
     " Uploads new data to server via ssh
@@ -181,6 +185,7 @@ def put_data(file_name):
     rem_file.write(loc_file.read())
     rem_file.flush()
     rem_file.close()
+
 
 def get_data():
     """
@@ -204,6 +209,7 @@ def get_data():
     collecting = False
 
     return 0
+
 
 def main():
     """
