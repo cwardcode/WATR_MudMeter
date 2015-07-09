@@ -1,18 +1,20 @@
 ##
 # Author:      Chris Ward
 # Date:        05/26/2015
-# Version:     05/26/2015
+# Version:     07/08/2015
 # Description: An attempt to read in data from our CR850 data logger and stores
 #           to files based on table name, while streaming to plot.ly
 ##
 
 from datetime import datetime, timedelta
 from plotly.graph_objs import Stream, Scatter, Layout, Data, Figure, XAxis, YAxis
+
 from pycampbellcr1000 import CR1000, utils
 import os
 import platform
 import plotly.plotly as py
 import plotly.tools as tls
+import paramiko
 import threading
 import time
 
@@ -61,7 +63,7 @@ turbidity2 = Scatter(
     y=[],
     mode='lines+markers',
     stream=Stream(
-        token=stream_ids[1],
+        token=stream_ids[1]),
     name="Turbidity Sensor 2 (NTU)"
 )
 
@@ -152,13 +154,37 @@ def collect_data(table_name):
 
     os.write(table_file, table_csv.encode('UTF-8'))
     os.close(table_file)
+
+    # Upload/Append data to server
+    put_data(table_name)
+
     os.remove('.filelock')
     return 0
+def put_data(file_name):
+    """
+    " Uploads new data to server via ssh
+    """
+    loc_file = open(file_name + '.csv', 'r')
+    # Holds private key to connect to server
+    key = paramiko.RSAKey.from_private_key_file('keyp1.pem')
+    # Holds Transport socket
+    t = paramiko.Transport(('aws.trantracker.com', 22))
+    # Attempt to connect with key
+    t.connect(username='ubuntu', pkey=key)
+    # Create sftp session
+    c = paramiko.SFTPClient.from_transport(t)
+    # Change into where data is stored
+    c.chdir('updata')
+    # Get remote file, and set mode to append
+    rem_file = c.file(file_name + '.csv', mode='a', bufsize=1)
+    # Write data and clean up TODO: Make sure below line works!
+    rem_file.write(loc_file.read())
+    rem_file.flush()
+    rem_file.close()
 
 def get_data():
     """
     " Collects data from the logger every 15 minutes and stores in file to send
-    "
     """
     global collecting
     global tables
@@ -179,10 +205,10 @@ def get_data():
 
     return 0
 
-"""
-" Main function of the program, opens stream and allows plot to update.
-"""
 def main():
+    """
+    " Main function of the program, opens stream and allows plot to update.
+    """
     global collecting
     global dataTable
     global stream_link
