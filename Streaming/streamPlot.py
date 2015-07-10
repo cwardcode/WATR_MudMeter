@@ -47,7 +47,7 @@ stream_id = stream_ids[0]
 # Used to check if header should be used
 has_ran = False
 # File descriptor for log file
-log_file = open('log.txt')
+log_file = os.open("logfile.txt", os.O_RDWR | os.O_APPEND | os.O_CREAT)
 
 # Set up our traces
 turbidity = Scatter(
@@ -106,6 +106,7 @@ def update_plot(table):
     global dataColm2
     global dateColm
     global device
+    global log_file
     global stream_link
     global turb2_link
 
@@ -122,7 +123,9 @@ def update_plot(table):
         x = i[dateColm]
         y = i[dataColm]
         y1 = i[dataColm2]
-        print("Plotting: Date: " + str(x) + ", NTU: " + str(y))
+        output = "Plotting: Date: " + str(x) + ", NTU: " + str(y)
+        print(output)
+        os.write(log_file, output)
         stream_link.write(dict(x=x, y=y))
         turb2_link.write(dict(x=x, y=y1))
         time.sleep(0.80)
@@ -137,24 +140,18 @@ def collect_data(table_name):
     """
     global has_ran
     
-    # Holds whether the file already exists
-    exists = False
-
     # Start date for data  collection, should be fifteen minutes in the past
     start_date_form = datetime.now() - timedelta(minutes=15)
 
     # End date for  data collection, should be now, to complete our 15 minute interval
     end_date_form = datetime.now()
 
-    os.open('.filelock', os.O_WRONLY | os.O_CREAT)
-    if os.path.exists(table_name + '.csv'):
-        exists = True
     if platform == 'Linux':
         table_file = os.open(table_name + '.csv', os.O_WRONLY | os.O_APPEND | os.O_CREAT)
     else:
         table_file = os.open(table_name + '.csv', os.O_BINARY | os.O_WRONLY | os.O_APPEND | os.O_CREAT)
     table_data = device.get_data(table_name, start_date_form, end_date_form)
-    if  has_ran:
+    if has_ran:
         table_csv = utils.dict_to_csv(table_data, ",", header=False)
     else:
         table_csv = utils.dict_to_csv(table_data, ",", header=True)
@@ -166,7 +163,6 @@ def collect_data(table_name):
     # Upload/Append data to server
     put_data(table_name)
 
-    os.remove('.filelock')
     return 0
 
 
@@ -187,11 +183,10 @@ def put_data(file_name):
     c.chdir('updata')
     # Get remote file, and set mode to append
     rem_file = c.file(file_name + '.csv', mode='a', bufsize=1)
-    # Write data and clean up TODO: Make sure below line works!
+    # Write data and clean up
     rem_file.write(loc_file.read())
     rem_file.flush()
     rem_file.close()
-    print("Removing File: ")
     loc_file.close()
     os.remove(file_name + '.csv')
 
@@ -222,6 +217,7 @@ def main():
     """
     global collecting
     global dataTable
+    global log_file
     global stream_link
     global turb2_link
 
@@ -239,7 +235,9 @@ def main():
             # Keep link alive
             stream_link.heartbeat()
         else:
-            print("waiting to finish sending data")
+            output = "waiting to finish sending data"
+            print(output)
+            os.write(log_file, output)
             # Wait 15 seconds to finish sending data
             time.sleep(15)
     # Close stream to server
@@ -251,5 +249,7 @@ def main():
 try:
     main()
 except Exception, e:
-    print("Exception occurred: " + str(e))
+    exception_output = "Exception occurred: " + str(e)
+    os.write(log_file, exception_output)
+    print(exception_output)
     pass
