@@ -44,7 +44,10 @@ tables = device.list_tables()
 stream_ids = tls.get_credentials_file()['stream_ids']
 # Grab first Token in list
 stream_id = stream_ids[0]
-
+# Used to check if header should be used
+has_ran = False
+# File descriptor for log file
+log_file = open('log.txt')
 
 # Set up our traces
 turbidity = Scatter(
@@ -132,6 +135,8 @@ def collect_data(table_name):
     " Function which takes in a table name, gathers its data and exports it as a CSV file for analysis.
     " @:param table_name - name of table to collect data and export
     """
+    global has_ran
+    
     # Holds whether the file already exists
     exists = False
 
@@ -149,10 +154,11 @@ def collect_data(table_name):
     else:
         table_file = os.open(table_name + '.csv', os.O_BINARY | os.O_WRONLY | os.O_APPEND | os.O_CREAT)
     table_data = device.get_data(table_name, start_date_form, end_date_form)
-    if exists:
+    if  has_ran:
         table_csv = utils.dict_to_csv(table_data, ",", header=False)
     else:
         table_csv = utils.dict_to_csv(table_data, ",", header=True)
+        has_ran = True
 
     os.write(table_file, table_csv.encode('UTF-8'))
     os.close(table_file)
@@ -168,7 +174,7 @@ def put_data(file_name):
     """
     " Uploads new data to server via ssh
     """
-    loc_file = open(file_name + '.csv', 'r')
+    loc_file = open(file_name + '.csv', 'rw')
     # Holds private key to connect to server
     key = paramiko.RSAKey.from_private_key_file('keyp1.pem')
     # Holds Transport socket
@@ -185,6 +191,9 @@ def put_data(file_name):
     rem_file.write(loc_file.read())
     rem_file.flush()
     rem_file.close()
+    print("Removing File: ")
+    loc_file.close()
+    os.remove(file_name + '.csv')
 
 
 def get_data():
@@ -200,14 +209,10 @@ def get_data():
 
     threading.Timer(FIFTN_MINUTES_N_SECS, get_data).start()
 
-    os.open('.datalock', os.O_WRONLY | os.O_CREAT)
-
     for table in tables:
         collect_data(table)
-
-    os.remove('.datalock')
     collecting = False
-
+    
     return 0
 
 
