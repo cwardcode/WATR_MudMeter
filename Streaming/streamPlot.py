@@ -32,6 +32,9 @@ port = "115200"
 # Holds the column names containing data we're monitoring
 dataColm = 'TurbNTU'
 dataColm2 = 'TurbNTU2'
+dataColm2 = 'TurbNTU3'
+tempColm = 'AquiTemp'
+depthColm = 'DepthFT2'
 # Holds the table that contains the data we're plotting
 dataTable = 'TableEachScan'
 # Holds the column name containing the date
@@ -58,7 +61,7 @@ turbidity = Scatter(
         token=stream_id,
         maxpoints=80
     ),
-    name="Turbidity Sensor (NTU)"
+    name="Analite Sensor 1 (NTU)"
 )
 
 turbidity2 = Scatter(
@@ -69,11 +72,45 @@ turbidity2 = Scatter(
         token=stream_ids[1],
         maxpoints=80
     ),
-    name="Turbidity Sensor 2 (NTU)"
+    name="Analite Sensor 2 (NTU)"
+)
+
+turbidity3 = Scatter(
+    x=[],
+    y=[],
+    mode='lines+markers',
+    stream=Stream(
+        token=stream_ids[2],
+        maxpoints=80
+    ),
+    name="AquiStar Turbo (NTU)"
+)
+
+
+temperature = Scatter(
+    x=[],
+    y=[],
+    mode='lines+markers',
+    stream=Stream(
+        token=stream_ids[3],
+        maxpoints=80
+    ),
+    name="AquiStar Temp (Deg C)"
+)
+
+depth = Scatter(
+    x=[],
+    y=[],
+    mode='lines+markers',
+    stream=Stream(
+        token=stream_ids[4],
+        maxpoints=80
+    ),
+    name="Depth (ft)"
 )
 
 # Set up data sets
-plot_data = Data([turbidity, turbidity2])
+plot_data = Data([turbidity, turbidity2, turbidity3, temperature, depth])
 
 # Configure the Layout
 layout = Layout(
@@ -89,10 +126,14 @@ layout = Layout(
 # Create the plot itself
 fig = Figure(data=plot_data, layout=layout)
 # Generate plot.ly URL based on name
-unique_url = py.plot(fig, filename='NTUDataStream')
-# Holds the connection to the stream
+unique_url = py.plot(fig, filename='WATRDataStream')
+# Holds the connections to the streams
 stream_link = py.Stream(stream_id)
 turb2_link = py.Stream(stream_ids[1])
+turb3_link = py.Stream(stream_ids[2])
+temp_link = py.Stream(stream_ids[3])
+depth_link = py.Stream(stream_ids[4])
+
 # Holds whether update_plot is currently running
 collecting = False
 
@@ -104,11 +145,15 @@ def update_plot(table):
     """
     global dataColm
     global dataColm2
+    global dataColm3
     global dateColm
     global device
     global log_file
     global stream_link
     global turb2_link
+    global turb3_link
+    global temp_link
+    global depth_link
 
     # Start date for data  collection, should be fifteen minutes in the past
     sTime = datetime.now() - timedelta(seconds=7)
@@ -123,11 +168,17 @@ def update_plot(table):
         x = i[dateColm]
         y = i[dataColm]
         y1 = i[dataColm2]
+        y2 = i[dataColm3]
+        y3 = i[tempColm]
+        y4 = i[depthColm]
         output = "Plotting: Date: " + str(x) + ", NTU: " + str(y)
         print(output)
         os.write(log_file, output)
         stream_link.write(dict(x=x, y=y))
         turb2_link.write(dict(x=x, y=y1))
+        turb3_link.write(dict(x=x, y=y2))
+        temp_link.write(dict(x=x, y=y3))
+        depth_link.write(dict(x=x, y=y4))
         time.sleep(0.80)
 
     return 0
@@ -220,10 +271,16 @@ def main():
     global log_file
     global stream_link
     global turb2_link
+    global turb3_link
+    global temp_link
+    global depth_link
 
     # Open connection to plot.ly server
     stream_link.open()
     turb2_link.open()
+    turb3_link.open()
+    temp_link.open()
+    depth_link.open()
     # Collect data every 15 minutes
     get_data()
     # Update plot continuously
@@ -241,6 +298,9 @@ def main():
             # Wait 15 seconds to finish sending data
             time.sleep(15)
     # Close stream to server
+    depth_link.close()
+    temp_link.close()
+    turb3_link.close()
     turb2_link.close()
     stream_link.close()
     return 0
