@@ -1,9 +1,10 @@
 ##
 # Author:      Chris Ward
 # Date:        05/26/2015
-# Version:     07/08/2015
+# Version:     07/26/2015
 # Description: An attempt to read in data from our CR850 data logger and stores
-#           to files based on table name, while streaming to plot.ly
+#              to files based on table name, while streaming to plot.ly and uploading
+#              data to a server
 ##
 
 from datetime import datetime, timedelta
@@ -137,7 +138,7 @@ layout = Layout(
 # Create the plot itself
 fig = Figure(data=plot_data, layout=layout)
 # Generate plot.ly URL based on name
-unique_url = py.plot(fig, filename='WATRDataStream')
+unique_url = py.plot(fig, filename='WATRDataStream_Medians')
 # Holds the connections to the streams
 stream_link = py.Stream(stream_id)
 turb2_link = py.Stream(stream_ids[1])
@@ -287,6 +288,7 @@ def main():
     global turb3_link
     global temp_link
     global depth_link
+    global depth2_link
 
     # Open connection to plot.ly server
     stream_link.open()
