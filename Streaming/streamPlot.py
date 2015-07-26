@@ -7,7 +7,7 @@
 ##
 
 from datetime import datetime, timedelta
-from plotly.graph_objs import Stream, Scatter, Layout, Data, Figure, XAxis, YAxis
+from plotly.graph_objs import Stream, Scatter, Layout, Data, Figure, XAxis, YAxis, Legend
 
 from pycampbellcr1000 import CR1000, utils
 import os
@@ -30,13 +30,14 @@ else:
 # Holds the port on which we're communicating with the device
 port = "115200"
 # Holds the column names containing data we're monitoring
-dataColm = 'TurbNTU'
-dataColm2 = 'TurbNTU2'
-dataColm2 = 'TurbNTU3'
-tempColm = 'AquiTemp'
-depthColm = 'DepthFT2'
+dataColm = 'TurbNTU_Med'
+dataColm2 = 'TurbNTU2_Med'
+dataColm3 = 'TurbNTU3_Med'
+tempColm = 'AquiTemp_Med'
+depthColm = 'DepthFT_Med'
+depthColm2 = 'DepthFT2_Med'
 # Holds the table that contains the data we're plotting
-dataTable = 'TableEachScan'
+dataTable = 'Table'
 # Holds the column name containing the date
 dateColm = 'Datetime'
 # The device we're connecting to,
@@ -109,8 +110,18 @@ depth = Scatter(
     name="Depth (ft)"
 )
 
+depth2 = Scatter(
+    x=[],
+    y=[],
+    mode='lines+markers',
+    stream=Stream(
+        token=stream_ids[5],
+        maxpoints=80
+    ),
+    name="Depth2 (ft)"
+)
 # Set up data sets
-plot_data = Data([turbidity, turbidity2, turbidity3, temperature, depth])
+plot_data = Data([turbidity, turbidity2, turbidity3, temperature, depth, depth2])
 
 # Configure the Layout
 layout = Layout(
@@ -133,6 +144,7 @@ turb2_link = py.Stream(stream_ids[1])
 turb3_link = py.Stream(stream_ids[2])
 temp_link = py.Stream(stream_ids[3])
 depth_link = py.Stream(stream_ids[4])
+depth2_link = py.Stream(stream_ids[5])
 
 # Holds whether update_plot is currently running
 collecting = False
@@ -146,6 +158,7 @@ def update_plot(table):
     global dataColm
     global dataColm2
     global dataColm3
+    global depthColm2
     global dateColm
     global device
     global log_file
@@ -154,6 +167,7 @@ def update_plot(table):
     global turb3_link
     global temp_link
     global depth_link
+    global depth2_link
 
     # Start date for data  collection, should be fifteen minutes in the past
     sTime = datetime.now() - timedelta(seconds=7)
@@ -167,18 +181,17 @@ def update_plot(table):
     for i in newData:
         x = i[dateColm]
         y = i[dataColm]
-        y1 = i[dataColm2]
-        y2 = i[dataColm3]
-        y3 = i[tempColm]
-        y4 = i[depthColm]
+
         output = "Plotting: Date: " + str(x) + ", NTU: " + str(y)
         print(output)
+
         os.write(log_file, output)
-        stream_link.write(dict(x=x, y=y))
-        turb2_link.write(dict(x=x, y=y1))
-        turb3_link.write(dict(x=x, y=y2))
-        temp_link.write(dict(x=x, y=y3))
-        depth_link.write(dict(x=x, y=y4))
+        stream_link.write(dict(x=x, y=i[dataColm]))
+        turb2_link.write(dict(x=x, y=i[dataColm2]))
+        turb3_link.write(dict(x=x, y=i[dataColm3]))
+        temp_link.write(dict(x=x, y=i[tempColm]))
+        depth_link.write(dict(x=x, y=i[depthColm]))
+        depth2_link.write(dict(x=x, y=i[depthColm2]))
         time.sleep(0.80)
 
     return 0
@@ -281,6 +294,7 @@ def main():
     turb3_link.open()
     temp_link.open()
     depth_link.open()
+    depth2_link.open()
     # Collect data every 15 minutes
     get_data()
     # Update plot continuously
@@ -298,6 +312,7 @@ def main():
             # Wait 15 seconds to finish sending data
             time.sleep(15)
     # Close stream to server
+    depth2_link.close()
     depth_link.close()
     temp_link.close()
     turb3_link.close()
