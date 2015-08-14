@@ -48,16 +48,6 @@ then
 fi
 echo "ok!"
 
-# Enable UART 4 in uEnv.txt
-echo -n "Enabling UART 5 in uEnv.txt... "
-uartStat=$(echo dtb=am335x-boneblack-ttyO4.dtb >> /boot/uEnv.txt)
-if [ $? -ne 0 ]
-then
-    echo -e "$uartStat\nFailed to setup uart4 support, exiting."
-    exit 3
-fi
-echo "ok!"
-
 # Copy and initialize services
 echo -n "Installing services... "
 cpStat=$(cp usb* /etc/init.d/)
