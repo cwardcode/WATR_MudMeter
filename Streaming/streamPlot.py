@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from plotly.graph_objs import Stream, Scatter, Layout, Data, Figure, XAxis, YAxis, Legend
 
 from pycampbellcr1000 import CR1000, utils
+from pycampbellcr1000.exceptions import NoDeviceException
 import os
 import platform
 import plotly.plotly as py
@@ -251,15 +252,17 @@ def collect_data(table_name):
         table_csv = utils.dict_to_csv(table_data, ",", header=True)
         has_ran = True
 
+    output = "Writing file to local storage\n"
+    os.write(log_file, output)
     os.write(table_file, table_csv.encode('UTF-8'))
     os.close(table_file)
 
-    output = "Writing file to local\n"
-    os.write(log_file, output)
-    # Upload/Append data to server
-    put_data(table_name)
     output = "uploading file to server\n"
     os.write(log_file, output)
+
+    # Upload/Append data to server
+    put_data(table_name)
+
     output = "Wrote file to server\n"
     os.write(log_file, output)
     return 0
@@ -355,7 +358,13 @@ def get_data():
     global collecting
     global tables
 
+    output = "Setting collecting variable to true, should be false: " + str(collecting) + "\n"
+    os.write(log_file, output)
+    print(output)    
     collecting = True
+    output = "Just set collecting variable to true, should be true now: " + str(collecting) + "\n"
+    os.write(log_file, output)
+    print(output)    
     # 15 minutes = 900 seconds
     FIFTN_MINUTES_N_SECS = 900
 
@@ -365,8 +374,15 @@ def get_data():
         collect_data(table)
         output = "Collecting data: " + str(table) + "\n"
         os.write(log_file, output)
+        print(output)    
+
+    output = "Setting collecting variable to false, should be true: " + str(collecting) + "\n"
+    os.write(log_file, output)
+    print(output)    
     collecting = False
-    
+    output = "Just set collecting variable to false, should be false now: " + str(collecting) + "\n"
+    os.write(log_file, output)
+    print(output)    
     return 0
 
 
@@ -389,8 +405,9 @@ def main():
     turb3_link.open()
     temp_link.open()
     depth2_link.open()
-    output = "streams opened\n"
+    output = "plotly streams opened\n"
     os.write(log_file, output)
+    print(output)
     median_link.open()
     # Collect data every 15 minutes
     get_data()
@@ -404,7 +421,7 @@ def main():
                 output = "updated plot\n"
                 os.write(log_file, output)
             except NoDeviceException, e:
-                exception_output = time.strftime("%H:%M:%S") + "Exception occurred: " + str(e) + "\n"
+                exception_output = time.strftime("%H:%M:%S") + " In Main Exception occurred: " + str(e) + "\n"
                 os.write(log_file, exception_output)
                 print(exception_output)
                 # Try to continue
@@ -422,14 +439,18 @@ def main():
             # Wait 15 seconds to finish sending data
             time.sleep(15)
     # Close stream to server
+    output = "*****\n BROKE OUT OF Main FOR LOOP \n*****\n"
+    print(output)
+    os.write(log_file, output)
     median_link.close()
     depth2_link.close()
     temp_link.close()
     turb3_link.close()
     turb2_link.close()
     stream_link.close()
-    output = "Streams closed\n "
+    output = "Plotly Streams closed\n "
     os.write(log_file, output)
+    print(output)
     return 0
 
 # Call main, execute program
@@ -438,7 +459,7 @@ try:
 except Exception, e:
     
     # Log exception
-    exception_output = time.strftime("%H:%M:%S") + "Exception occurred: " + str(e) + "\n"
+    exception_output = time.strftime("%H:%M:%S") + " Exception occurred: " + str(e) + "\n"
     os.write(log_file, exception_output)
     print(exception_output)
     # Upload logfile
