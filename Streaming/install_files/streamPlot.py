@@ -38,15 +38,15 @@ port = "115200"
 # Holds the column names containing data we're monitoring
 dataColm = 'TurbNTU'
 dataColm2 = 'TurbNTU2'
-dataColm3 = 'TurbNTU3'
+liveTurbColm = 'TurbNTU3'
 tempColm = 'AquiTemp'
-depthColm2 = 'DepthFT2'
+fftnDepthColm = 'DepthFT2'
 NTU2_Med = "0" 
 NTU3_Med = "0" 
 # Holds the table that contains the data we're plotting
 dataTable = 'TableEachScan'
 # Holds the column name containing the date
-dateColm = 'Datetime'
+datetimeColm = 'Datetime'
 # The device we're connecting to,
 device = CR1000.from_url('serial:/' + location + ":" + port)
 # Get all tables from device
@@ -148,11 +148,11 @@ fig = Figure(data=plot_data, layout=layout)
 unique_url = py.plot(fig, filename='WATRDataStream_With_Median')
 # Holds the connections to the streams
 stream_link = py.Stream(stream_id)
-turb2_link = py.Stream(stream_ids[1])
-turb3_link = py.Stream(stream_ids[2])
-temp_link = py.Stream(stream_ids[3])
-depth2_link = py.Stream(stream_ids[4])
-median_link = py.Stream(stream_ids[5])
+fftnMinTurb_link = py.Stream(stream_ids[1])
+dailyTurb_link = py.Stream(stream_ids[2])
+liveTurb_link = py.Stream(stream_ids[3])
+fftnDepth_link = py.Stream(stream_ids[4])
+fftnTemp_link = py.Stream(stream_ids[5])
 
 # Holds whether update_plot is currently running
 collecting = False
@@ -165,17 +165,17 @@ def update_plot(table):
     """
     global dataColm
     global dataColm2
-    global dataColm3
-    global depthColm2
-    global dateColm
+    global liveTurbColm
+    global fftnDepthColm
+    global datetime
     global device
     global log_file
     global stream_link
-    global turb2_link
-    global turb3_link
-    global temp_link
-    global depth2_link
-    global median_link
+    global fftnMinTurb_link
+    global dailyTurb_link
+    global liveTurb_link
+    global fftnDepth_link
+    global fftnTemp_link
 
     # Start date for data  collection, should be fifteen minutes in the past
     sTime = datetime.now() - timedelta(seconds=7)
@@ -487,17 +487,17 @@ def main():
     """
     global collecting
     global dataTable
-    global depth2_link
+    global fftnDepth_link
     global log_file
     global stream_link
     global tables
-    global temp_link
-    global turb2_link
-    global turb3_link
+    global liveTurb_link
+    global fftnMinTurb_link
+    global dailyTurb_link
 
     # Open one connection to plot.ly server for each data point
     depth2_link.open()
-    median_link.open()
+    fftnTemp_link.open()
     stream_link.open()
     turb2_link.open()
     turb3_link.open()
@@ -536,7 +536,7 @@ def main():
     os.write(log_file, output)
 
     # Close stream to server -- shouldn't happen, but clean up if necessary
-    median_link.close()
+    fftnTemp_link.close()
     depth2_link.close()
     temp_link.close()
     turb3_link.close()

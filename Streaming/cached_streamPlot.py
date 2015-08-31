@@ -64,7 +64,7 @@ fig = Figure(data=data, layout=layout)
 unique_url = py.plot(fig, filename='NTUDataStream')
 # Holds the connection to the stream
 stream_link = py.Stream(stream_id)
-turb2_link = py.Stream(stream_ids[1])
+fftnMinTurb_link = py.Stream(stream_ids[1])
 # Holds the last line read in the file
 lastLine = 0
 # Holds whether the file has been read
@@ -77,7 +77,7 @@ dataFile = './examples/small/d1.csv'
 dataColm = 'TurbNTU'
 dataColm2 = 'TurbNTU2'
 # Holds the column name containing the date
-dateColm = 'Datetime'
+datetimeColm = 'Datetime'
 # Holds starting index value
 startIndex = 0
 
@@ -110,7 +110,7 @@ def update_plot(line):
     """
     global dataColm
     global dataColm2
-    global dateColm
+    global datetimeColm
     global dataFile
     global firstPass
     global fpTimer
@@ -155,14 +155,14 @@ def update_plot(line):
         y1 = NTU2[i]
         print("Plotting: Date: " + str(x) + ", NTU: " + str(y))
         stream_link.write(dict(x=x, y=y), dict(title="NTU Over Time (Waiting for new data)"))
-        turb2_link.write(dict(x=x, y=y1), dict(title="NTU Over Time (Waiting for new data)"))
+        fftnMinTurb_link.write(dict(x=x, y=y1), dict(title="NTU Over Time (Waiting for new data)"))
         i += 1
         time.sleep(0.80)
 
 
 # Open connection to plot.ly server
 stream_link.open()
-turb2_link.open()
+fftnMinTurb_link.open()
 
 # Infinitely collect data
 while True:
@@ -173,5 +173,5 @@ while True:
         pass
 
 # Close stream to server
-turb2_link.close()
+fftnMinTurb_link.close()
 stream_link.close()
