@@ -3,7 +3,7 @@
 ##
 # Author: Chris Ward <chris@cwardcode.com>
 # Name: DataCollectSetup.sh
-# Desc: Setup script to run on new BeagleBone Black to automatically set it up for data collection.
+# Desc: Setup script to run on a Raspberry Pi to automatically set it up for data collection.
 # Exit Values:
 # 0  - Successfully exited
 # 1  - Missing required files
@@ -17,6 +17,7 @@
 # 9  - Failed to install pip
 # 10 - Failed to install python module pycampbellcr1000
 # 11 - Failed to install paramiko module
+# 12 - Failed to set cron job for tunnel script
 ##
 
 # Check if user has root
@@ -35,13 +36,15 @@ echo -e "Installing to $installPath"
 
 # Ensure all required files are present
 echo -n "Verifying install files are present... "
-if [ ! -f "streamPlot.py" -o ! -f "usb3g" -o ! -f "usb4g" ]
+if [ ! -f "streamPlot.py" -o ! -f "usb3g" -o ! -f "usb4g" -o ! -f "tunnel.sh" ]
 then
     echo "Required files are missing!"
     exit 1
 fi
 echo "ok!"
 
+# Copy tunnel script to /bin
+$(cp tunnel.sh /bin/;chmod 755 /bin/tunnel.sh)
 
 # Copy and initialize services
 echo -n "Installing services... "
@@ -130,12 +133,22 @@ fi
 echo "ok!"
 
 # Install required python module
-echo -n "Installing PyCampbell module..."
+echo -n "Installing Parakimo module..."
 pycamStat=$(pip install paramiko)
 if [ $? -ne 0 ]
 then
-    echo -e "$pycamStat\nFailed to install python module, exiting."
-    exit 10
+    echo -e "$pycamStat\nFailed to install paramiko module, exiting."
+    exit 11
+fi
+echo "ok!"
+
+# Setup cron to run tunnel script constantly
+echo -n "Adding tunnel script to cron..."
+cronStat=$((crontab -l; echo -e " */1 * * * * /bin/tunnel.sh > ~/tunnel.log 2>&1") | sort - | uniq - | crontab - ) 
+if [ $? -ne 0 ]
+then
+    echo -e "$cronStat\nFailed to set cron job, exiting."
+    exit 12
 fi
 echo "ok!"
 

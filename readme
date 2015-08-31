@@ -13,7 +13,7 @@
 - Update plotted data to meet client requirements
 ## To start logging:
 1. Clone repo
-2. Run Streaming/setup_stream.sh as sudo
+2. Run Streaming/stream_setup.sh as sudo
 
 ## Folder Layout:
    -DataCollection <- Forked from CampbellDataCollection repository

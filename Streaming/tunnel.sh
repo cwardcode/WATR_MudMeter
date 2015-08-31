@@ -5,7 +5,7 @@
 ##
 createTunnel() {
   # Create reverse SSH session
-  /usr/bin/ssh -i keyp1.pem -N -R 19999:localhost:22 ubuntu@aws.cwardcode.com
+  /usr/bin/ssh -N -R 19999:localhost:22 #TODO insert server here 
   # Print result
   if [[ $? -eq 0 ]]; then
     echo Tunnel to Server created successfully
