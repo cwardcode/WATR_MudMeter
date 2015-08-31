@@ -10,8 +10,7 @@
 ##
 
 from datetime import datetime, timedelta
-from plotly.graph_objs import Stream, Scatter, Layout, Data, Figure, XAxis, YAxis, Legend
-
+from plotly.graph_objs import Stream, Scatter, Layout, Line, Data, Figure, XAxis, YAxis
 from pycampbellcr1000 import CR1000, utils
 from pycampbellcr1000.exceptions import NoDeviceException
 
@@ -41,11 +40,12 @@ port = "115200"
 datetimeColm = 'Datetime'
 
 # Holds the column names containing data we're monitoring
-liveTurbColm = 'TurbNTU3'
-fftnTempColm = 'AquiTemp_Avg'
-fftnDepthColm = 'DepthFT2_Avg'
+liveTurbColm = 'TurbNTU2'
+liveTurb2Colm = 'TurbNTU3'
+
 NTU2_15_MedColm = 'TurbNTU2_Med'
 NTU3_15_MedColm = 'TurbNTU2_Med'
+
 NTU2_24_MedColm = 'TurbNTU2_Med'
 NTU3_24_MedColm = 'TurbNTU3_Med'
 
@@ -54,8 +54,6 @@ NTU2_15_Med = 0
 NTU3_15_Med = 0
 NTU2_24_Med = 0
 NTU3_24_Med = 0
-fftnTemp_Avg = 0
-fftnDepth_Avg = 0
 # Holds the table that contains the data we're plotting
 dataTable = 'TableEachScan'
 # The device we're connecting to,
@@ -80,7 +78,7 @@ dailyTurbidMed = Scatter(
         token=stream_ids[1],
         maxpoints=80
     ),
-    name="Ana 2 (NTU)"
+    name="24hr Median Turbidity (NTU)"
 )
 
 liveTurbid = Scatter(
@@ -91,31 +89,9 @@ liveTurbid = Scatter(
         token=stream_ids[2],
         maxpoints=80
     ),
-    name="Turbidity Live (NTU)"
+    name="Turbidity Avg Live (NTU)"
 )
 
-
-temperature = Scatter(
-    x=[],
-    y=[],
-    mode='lines+markers',
-    stream=Stream(
-        token=stream_ids[3],
-        maxpoints=80
-    ),
-    name="Avg. Temp (Deg C)"
-)
-
-depth = Scatter(
-    x=[],
-    y=[],
-    mode='lines+markers',
-    stream=Stream(
-        token=stream_ids[4],
-        maxpoints=80
-    ),
-    name="Depth (ft)"
-)
 
 fftnMinTurbidMed = Scatter(
     x=[],
@@ -125,20 +101,91 @@ fftnMinTurbidMed = Scatter(
         token=stream_ids[5],
         maxpoints=80
     ),
-    name="Median Turbidity (NTU)"
+    name="15min Median Turbidity (NTU)"
 )
 
+baseNTULevel = Scatter(
+    x=[],
+    y=[0],
+    mode='lines',
+    line=Line(
+        opacity=0.5,
+        color='rgb(78,252,119)',
+        width=1,
+    ),
+    stream=Stream(
+        token=stream_ids[6],
+        maxpoints=80
+    ),
+    showlegend=False,
+    hoverinfo='none',
+    fill='tonexty',
+)
+goodNTULevel = Scatter(
+    x=[],
+    y=[10],
+    mode='lines',
+    line=Line(
+        opacity=0.5,
+        color='rgb(78,252,119)',
+        width=1,
+    ),
+    stream=Stream(
+        token=stream_ids[0],
+        maxpoints=80
+    ),
+    fill='tonexty',
+    hoverinfo='none',
+    name="Normal for trout and fish"
+)
+
+badNTULevel = Scatter(
+    x=[],
+    y=[100],
+    mode='lines',
+    line=Line(
+        opacity=0.5,
+        color='rgb(253,172,79)',
+        width=1,
+    ),
+    stream=Stream(
+        token=stream_ids[3],
+        maxpoints=80
+    ),
+    hoverinfo='none',
+    fill='tonexty',
+    name="Water Treatment Plants Can't Process over 100"
+)
+
+uglyNTULevel = Scatter(
+    x=[],
+    y=[1000],
+    mode='lines',
+    line=Line(
+        opacity=0.5,
+        color='rgb(253,79,79)',
+        width=1,
+    ),
+    stream=Stream(
+        token=stream_ids[4],
+        maxpoints=80
+    ),
+    hoverinfo='none',
+    fill='tonexty',
+    name="Very bad"
+)
 # Set up data sets
-plot_data = Data([fftnMinTurbidMed, dailyTurbidMed, liveTurbid, temperature, depth])
+plot_data = Data([fftnMinTurbidMed, dailyTurbidMed, liveTurbid, baseNTULevel, goodNTULevel, badNTULevel, uglyNTULevel])
 
 # Configure the Layout
 layout = Layout(
-    title='NTU Over Time',
+    title='\"Muddyness\" (Turbidity) in Scotts Creek',
     xaxis=XAxis(
         title='Date Time'
     ),
     yaxis=YAxis(
-        title='Turbidity(NTU)'
+        title='Turbidity(NTU)',
+        range=[0,150]
     )
 )
 
@@ -150,10 +197,12 @@ unique_url = py.plot(fig, filename='WATRDataStream_Dev')
 
 # Holds the connections to the streams
 fftnMinTurb_link = py.Stream(stream_ids[5])
+goodTurb_link = py.Stream(stream_ids[0])
 dailyTurb_link = py.Stream(stream_ids[1])
 liveTurb_link = py.Stream(stream_ids[2])
-fftnTemp_link = py.Stream(stream_ids[4])
-fftnDepth_link = py.Stream(stream_ids[3])
+badTurb_link = py.Stream(stream_ids[3])
+uglyTurb_link = py.Stream(stream_ids[4])
+baseTurb_link = py.Stream(stream_ids[6])
 
 # Holds whether update_plot is currently running
 collecting = False
@@ -165,6 +214,7 @@ def update_plot(table):
     " @:argument table - the table from which we're collecting data
     """
     global liveTurbColm
+    global liveTurb2Colm
     global fftnDepthColm
     global datetimeColm
     global device
@@ -172,8 +222,10 @@ def update_plot(table):
     global fftnMinTurb_link
     global dailyTurb_link
     global liveTurb_link
-    global fftnDepth_link
-    global fftnTemp_link
+    global baseTurb_link
+    global goodTurb_link
+    global badTurb_link
+    global uglyTurb_link
 
     # Start date for data  collection, should be seven seconds in the past (enough time to get new data from sensors)
     sTime = datetime.now() - timedelta(seconds=7)
@@ -201,18 +253,25 @@ def update_plot(table):
         # Average NTU Medians
         MedAvg = ((NTU2_15_Med + NTU3_15_Med) / 2.0)
         Med24Avg = ((NTU2_24_Med + NTU3_24_Med) / 2.0)
+        
+        # Get live turbidity data
+        liveTurb1 = i[liveTurbColm]
+        liveTurb2 = i[liveTurb2Colm]
+        liveTurbAvg = ((liveTurb1 + liveTurb2) / 2.0)
 
         # Write new data to plot.ly
         fftnMinTurb_link.write(dict(x=x, y=MedAvg))
         dailyTurb_link.write(dict(x=x, y=Med24Avg))
-        liveTurb_link.write(dict(x=x, y=i[liveTurbColm]))
-        fftnDepth_link.write(dict(x=x, y=fftnDepth_Avg))
-        fftnTemp_link.write(dict(x=x, y=fftnTemp_Avg))
+        liveTurb_link.write(dict(x=x, y=liveTurbAvg))
+        baseTurb_link.write(dict(x=x, y=0))
+        goodTurb_link.write(dict(x=x, y=10))
+        badTurb_link.write(dict(x=x, y=100))
+        uglyTurb_link.write(dict(x=x, y=3000))
 
         # Wait 0.80 seconds for new data to be collected
         time.sleep(0.80)
 
-        output = "Plotting new data:\nNUT_15_Med: " + str(MedAvg) + "\nNTU_24_Med: " + str(Med24Avg) + "\nNTU3: " + str(i[liveTurbColm]) + "\nTemp: " + str(i[fftnTempColm]) + "\nDepth: " + str(i[fftnDepthColm]) + "\n"
+        output = "Plotting new data:\nNUT_15_Med: " + str(MedAvg) + "\nNTU_24_Med: " + str(Med24Avg) + "\nLiveTurb Avg: " + str(liveTurbAvg) + "\n"
         print(output)
         os.write(log_file, output)
 
@@ -232,8 +291,6 @@ def collect_data(table_name):
     global NTU2_15_Med
     global NTU3_15_Med
 
-    global fftnTemp_Avg
-    global fftnDepth_Avg
 
     # 24 hour table data
     global NTU2_24_Med
@@ -268,15 +325,6 @@ def collect_data(table_name):
             print(output)
             os.write(log_file, output)
 
-            fftnTemp_Avg = i[fftnTempColm]
-            output = "Temp_Avg: " + str(i[fftnTempColm]) + "\n"
-            print(output)
-            os.write(log_file, output)
-
-            fftnDepth_Avg = i[fftnDepthColm]
-            output = "Depth_Avg: " + str(i[fftnDepthColm]) + "\n"
-            print(output)
-            os.write(log_file, output)
     if table_name == "Table24hr":
         for i in table_data:
             NTU2_24_Med = i[NTU2_24_MedColm]
@@ -518,26 +566,31 @@ def main():
     """
     global collecting
     global dataTable
-    global fftnDepth_link
     global log_file
     global tables
     global liveTurb_link
+    global baseTurb_link
+    global goodTurb_link
+    global badTurb_link
+    global uglyTurb_link
     global fftnMinTurb_link
     global dailyTurb_link
 
     # Open one connection to plot.ly server for each data point
-    fftnDepth_link.open()
-    fftnTemp_link.open()
     fftnMinTurb_link.open()
     dailyTurb_link.open()
     liveTurb_link.open()
+    baseTurb_link.open()
+    goodTurb_link.open()
+    badTurb_link.open()
+    uglyTurb_link.open()
 
     output = "plotly streams opened\n"
     os.write(log_file, output)
     print(output)
 
     # Collect data every 15 minutes
-    get_data()
+    # TODO get_data()
     output = "Got data!\n"
     os.write(log_file, output)
     # Update plot continuously
@@ -549,7 +602,7 @@ def main():
             # Wait 5 seconds before updating
             time.sleep(5)
             # Keep link alive
-            fftnDepth_link.heartbeat()
+            fftnMinTurb_link.heartbeat()
             output = "heartbeat sent "
             os.write(log_file, output)
             print(output)
@@ -565,8 +618,10 @@ def main():
     os.write(log_file, output)
 
     # Close stream to server -- shouldn't happen, but clean up if necessary
-    fftnTemp_link.close()
-    fftnDepth_link.close()
+    uglyTurb_link.close()
+    badTurb_link.close()
+    goodTurb_link.close()
+    baseTurb_link.close()
     liveTurb_link.close()
     dailyTurb_link.close()
     fftnMinTurb_link.close()
