@@ -1,8 +1,9 @@
 #!/usr/bin/python
+
 ##
 # Author:      Chris Ward
 # Date:        05/26/2015
-# Version:     07/26/2015
+# Version:     08/26/2015
 # Description: An attempt to read in data from our CR850 data logger and stores
 #              to files based on table name, while streaming to plot.ly and uploading
 #              data to a server
@@ -18,6 +19,8 @@ import platform
 import plotly.plotly as py
 import plotly.tools as tls
 import paramiko
+import socket
+import sys
 import threading
 import time
 
@@ -38,8 +41,8 @@ dataColm2 = 'TurbNTU2'
 dataColm3 = 'TurbNTU3'
 tempColm = 'AquiTemp'
 depthColm2 = 'DepthFT2'
-NTU2_Med = "0"
-NTU3_Med = "0"
+NTU2_Med = "0" 
+NTU3_Med = "0" 
 # Holds the table that contains the data we're plotting
 dataTable = 'TableEachScan'
 # Holds the column name containing the date
@@ -181,31 +184,45 @@ def update_plot(table):
     eTime = datetime.now()
 
     # Get new data from the logger
-    newData = device.get_data(table, sTime, eTime)
+    try:
+        newData = device.get_data(table, sTime, eTime)
+    except NoDeviceException as e:
+        output = "Device could not be reached\n"   
+        print(output)
+        os.write(log_file, output)
+        emergency_put()
+        exit(1)
 
-    output = "Received new data, plotting\n"
+    output = "Received new data, plotting\n"   
     print(output)
     os.write(log_file, output)
+    # Plot new Data 
     for i in newData:
         x = i[dateColm]
+        y = i[dataColm]
+        
+        # Average NTU Medians
+        MedAvg = ((int(NTU2_Med) + int(NTU3_Med)) / 2) 
 
-        #Average NTU Medians
-        MedAvg = ((NTU2_Med + NTU3_Med) / 2)
-
+        # Write new data to plot.ly
         stream_link.write(dict(x=x, y=i[dataColm]))
         turb2_link.write(dict(x=x, y=i[dataColm2]))
         turb3_link.write(dict(x=x, y=i[dataColm3]))
         temp_link.write(dict(x=x, y=i[tempColm]))
         depth2_link.write(dict(x=x, y=i[depthColm2]))
         median_link.write(dict(x=x, y=MedAvg))
+
+        # Wait 0.80 seconds for new data to be collected
         time.sleep(0.80)
 
-        output = "Plotting new data:\nNTU1: " + str(i[dataColm]) + "\nNTU2: " + str(i[dataColm2]) + "\nNTU3: " + str(i[dataColm3]) + "\nTemp: " + str(i[tempColm]) + "\nDepth: " + str(i[depthColm2]) + "\nMed: " + str(MedAvg) + "\n"
+        output = "Plotting new data:\nNTU1: " + str(i[dataColm]) + "\nNTU2: " + str(i[dataColm2]) + "\nNTU3: " + str(i[dataColm3]) + "\nTemp: " + str(i[tempColm]) + "\nDepth: " + str(i[depthColm2]) + "\nMed: " + str(MedAvg) + "\n" 
         print(output)
         os.write(log_file, output)
-        output = "Plotting new data, finished\n"
+
+        output = "Plotting new data, finished\n"  
         print(output)
         os.write(log_file, output)
+
     return 0
 
 
@@ -214,7 +231,6 @@ def collect_data(table_name):
     " Function which takes in a table name, gathers its data and exports it as a CSV file for analysis.
     " @:param table_name - name of table to collect data and export
     """
-    global has_ran
     global NTU2_Med
     global NTU3_Med
     # Start date for data  collection, should be fifteen minutes in the past
@@ -222,25 +238,29 @@ def collect_data(table_name):
 
     # End date for  data collection, should be now, to complete our 15 minute interval
     end_date_form = datetime.now()
-
+    
+    # Check which platform program is running on, if windows treat as binary
     if platform == 'Linux':
         table_file = os.open(table_name + '.csv', os.O_WRONLY | os.O_APPEND | os.O_CREAT)
     else:
         table_file = os.open(table_name + '.csv', os.O_BINARY | os.O_WRONLY | os.O_APPEND | os.O_CREAT)
-
+ 
     #Pull data from table on logger
     table_data = device.get_data(table_name, start_date_form, end_date_form)
+
+    # Get 15 minute medians
     if table_name == "Table15min":
+        # Iterate through table data, and set medians
         for i in table_data:
-            NTU2_Med = i['TurbNTU2_Med']
-            output = "NTU2_Med: " + str(i['TurbNTU2_Med']) + "\n"
+            NTU2_Med = int(i['TurbNTU2_Med'])
+            output = "NTU2_Med: " + str(i['TurbNTU2_Med']) + "\n"   
             print(output)
             os.write(log_file, output)
-            NTU3_Med = i['TurbNTU3_Med']
+            NTU3_Med = int(i['TurbNTU3_Med'])
             output = "NTU3_Med: " + str(i['TurbNTU3_Med']) + "\n"
             print(output)
             os.write(log_file, output)
-    # Set headers and convert dictionary to csv file
+    # Set headers if applicable and convert dictionary to csv file
     if has_ran:
         output = "Script has already ran at least once\n"
         os.write(log_file, output)
@@ -249,11 +269,14 @@ def collect_data(table_name):
         output = "Script has not already ran\n"
         os.write(log_file, output)
         table_csv = utils.dict_to_csv(table_data, ",", header=True)
-        has_ran = True
 
     output = "Writing file to local storage\n"
     os.write(log_file, output)
+
+    # Write table file to system
     os.write(table_file, table_csv.encode('UTF-8'))
+
+    #Close file descriptor
     os.close(table_file)
 
     output = "uploading file to server\n"
@@ -264,69 +287,107 @@ def collect_data(table_name):
 
     output = "Wrote file to server\n"
     os.write(log_file, output)
+
     return 0
 
 
 def put_data(file_name):
     """
-    " Uploads new data to server via ssh
+    " Uploads a new data file to remote server via ssh
     """
-
+    # Create file descriptor for table file 
     loc_file = open(file_name + '.csv', 'rw')
+
+    # Create file descriptor for log file 
     log_file2 = open('logfile.txt', 'r')
+
     output = "files opened\n"
     print(output)
     os.write(log_file, output)
-    # Holds private key to connect to server
+
+    # Holds private key used to connect to server
     key = paramiko.RSAKey.from_private_key_file('keyp1.pem')
-    # Holds Transport socket
-    t = paramiko.Transport(('aws.cwardcode.com', 22))
-    # Attempt to connect with key
-    t.connect(username='ubuntu', pkey=key)
-    # Create sftp session
-    c = paramiko.SFTPClient.from_transport(t)
+
+    # Try establishing connection to server
+    try:
+        # Holds Transport socket
+        t = paramiko.Transport(('aws.cwardcode.com', 22))
+        # Attempt to connect with key
+        t.connect(username='ubuntu', pkey=key)
+        # Create sftp session
+        c = paramiko.SFTPClient.from_transport(t)
+
+    except socket.gaierror as e:
+    # getAddrInfo error occured, so let's collect data and exit
+        output = "GetAddressInfo error occurred: " + str(e)
+        print(output)
+        os.write(log_file, output)
+        emergency_put()
+        sys.exit(2)
+
+    except socket.error as e:
+    # Socket error occured, so let's collect data and exit
+        output = "Connection error occurred: " + str(e)
+        print(output)
+        os.write(log_file, output)
+        emergency_put()
+        sys.exit(3)
+
     # Change into where data is stored
     c.chdir('updata')
+
     output = "changed to updata\n"
     print(output)
     os.write(log_file, output)
+
     # Get remote file, and set mode to append
     rem_file = c.file(file_name + '.csv', mode='a', bufsize=1)
+
     output = "opened tablefile\n"
     print(output)
     os.write(log_file, output)
+    #Get remote log file and set mode to overwrite
     rem_log_file = c.file('logfile.txt', mode='w', bufsize=1)
     output = "opened logfd\n"
     print(output)
     os.write(log_file, output)
+
     # Write data and clean up
     rem_file.write(loc_file.read())
     rem_log_file.write(log_file2.read())
     output = "Wrote files to server\n"
-    os.write(log_file, output)
+
     #Flush/close data file streams
+    os.write(log_file, output)
     rem_file.flush()
     rem_file.close()
     loc_file.close()
+
     #Flush/close log file streams
     rem_log_file.flush()
     rem_log_file.close()
     rem_log_file.close()
+
     output = "File streams closed\n"
     os.write(log_file, output)
+    # Remove file after it's uploaded
     os.remove(file_name + '.csv')
     output = "Removed CSV: " + file_name + "\n"
     os.write(log_file, output)
-    # Close client connection
+
+    #Close client
     c.close()
-    # Close transport socket
+
+    # Close transport
     t.close()
+
+    return 0
 
 def emergency_put():
     """
     " Uploads Log file to server in event of crash
     """
-
+    
     output = "********************************\nException detected above at: " + time.strftime("%H:%M:%S") + "!!!! *\n********************************\n"
     os.write(log_file, output)
     log_file2 = open('logfile.txt', 'r')
@@ -351,40 +412,72 @@ def emergency_put():
     rem_log_file.flush()
     rem_log_file.close()
     rem_log_file.close()
-
+    
+    return 0
 
 def get_data():
     """
     " Collects data from the logger every 15 minutes and stores in file to send
     """
     global collecting
+    global has_ran
     global tables
 
     output = "Setting collecting variable to true, should be false: " + str(collecting) + "\n"
     os.write(log_file, output)
-    print(output)
+    print(output)    
+    # Set collecting variable to lock access to logger
     collecting = True
+
     output = "Just set collecting variable to true, should be true now: " + str(collecting) + "\n"
     os.write(log_file, output)
-    print(output)
+    print(output)    
+
     # 15 minutes = 900 seconds
     FIFTN_MINUTES_N_SECS = 900
+    
+    output = "In get_data, about to set threading timer\n"
+    os.write(log_file, output)
+    print(output)    
 
+    # Set timer to run method again in 15 minutes
     threading.Timer(FIFTN_MINUTES_N_SECS, get_data).start()
+    
+    output = "In get_data, about to pull data from logger\n"
+    os.write(log_file, output)
+    print(output)    
 
+    # Pull data for each table on logger 
     for table in tables:
-        collect_data(table)
-        output = "Collecting data: " + str(table) + "\n"
+        output = "Inside table iteration, table is: " + str(table) + "\n"
         os.write(log_file, output)
-        print(output)
+        print(output)    
+        # Get data
+        collect_data(table)
+         
+        output = "Inside table iteration, Finished pulling data from table \n"
+        os.write(log_file, output)
+        print(output)    
+
+    # Ensure headers are disabled
+    if not has_ran:
+        has_ran = True;
+
+    output = "In get_data, finished pulling data from logger\n"
+    os.write(log_file, output)
+    print(output)    
 
     output = "Setting collecting variable to false, should be true: " + str(collecting) + "\n"
     os.write(log_file, output)
-    print(output)
+    print(output)    
+
+    # Finished collecting, unblock and let data upload to plot.ly
     collecting = False
+
     output = "Just set collecting variable to false, should be false now: " + str(collecting) + "\n"
     os.write(log_file, output)
-    print(output)
+    print(output)    
+
     return 0
 
 
@@ -401,16 +494,19 @@ def main():
     global temp_link
     global turb2_link
     global turb3_link
-    # Open connection to plot.ly server
+
+    # Open one connection to plot.ly server for each data point
+    depth2_link.open()
+    median_link.open()
     stream_link.open()
     turb2_link.open()
     turb3_link.open()
     temp_link.open()
-    depth2_link.open()
+
     output = "plotly streams opened\n"
     os.write(log_file, output)
     print(output)
-    median_link.open()
+    
     # Collect data every 15 minutes
     get_data()
     output = "Got data!\n"
@@ -418,22 +514,16 @@ def main():
     # Update plot continuously
     while True:
         if not collecting:
-            try:
-                update_plot(dataTable)
-                output = "updated plot\n"
-                os.write(log_file, output)
-            except NoDeviceException, e:
-                exception_output = time.strftime("%H:%M:%S") + " In Main Exception occurred: " + str(e) + "\n"
-                os.write(log_file, exception_output)
-                print(exception_output)
-                # Try to continue
-                pass
+            update_plot(dataTable)
+            output = "updated plot\n"
+            os.write(log_file, output)
             # Wait 5 seconds before updating
             time.sleep(5)
             # Keep link alive
-            #stream_link.heartbeat()
-            #output = "heartbeat sent "
-            #os.write(log_file, output)
+            stream_link.heartbeat()
+            output = "heartbeat sent "
+            os.write(log_file, output)
+            print(output)
         else:
             output = "waiting to finish sending data\n"
             print(output)
@@ -444,27 +534,20 @@ def main():
     output = "*****\n BROKE OUT OF Main FOR LOOP \n*****\n"
     print(output)
     os.write(log_file, output)
+
+    # Close stream to server -- shouldn't happen, but clean up if necessary
     median_link.close()
     depth2_link.close()
     temp_link.close()
     turb3_link.close()
     turb2_link.close()
     stream_link.close()
+
     output = "Plotly Streams closed\n "
     os.write(log_file, output)
     print(output)
+
     return 0
 
 # Call main, execute program
-try:
-    main()
-except Exception, e:
-
-    # Log exception
-    exception_output = time.strftime("%H:%M:%S") + " Exception occurred: " + str(e) + "\n"
-    os.write(log_file, exception_output)
-    print(exception_output)
-    # Upload logfile
-    emergency_put()
-    # Try to continue
-    pass
+main()
