@@ -1,24 +1,20 @@
 # CampbellDataStreaming
 ## Description
 - A system allowing data collection from a Campbell scientific datalogger using
-  a BeagleBone Black and Python, and automatically streaming data statistics to
+  a Raspebrry Pi and Python. After collection, it automatically streams data to
   plot.ly.
 
 ## Requirements:
-- BeagleBone Black running Debian Jessie
+- A computer running Debian Jessie (I'm using a Raspberry Pi)
 - Internet Connection (I'm using a GSM Modem)
-- UART4 RS232 cape
+- A serial port to connect to the Campbell, on a R. Pi I'm using a RS232 cape
 
 ## To Do:
-   - How to collect data such that it isn't graphed faster than it's collected.
-     (overwrite collected file)
-   - Either that, or keep index of last row read, and start from there on next 
-     iteration. (append to collected file)
-
+- Update plotted data to meet client requirements
 ## To start logging:
 1. Clone repo
-2. Run DataCollection/setup.sh as sudo
+2. Run Streaming/setup_stream.sh as sudo
 
 ## Folder Layout:
    -DataCollection <- Forked from CampbellDataCollection repository
-   -Streaming      <- Contains data streaming code
+   -Streaming      <- Contains live data streaming code

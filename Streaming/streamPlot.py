@@ -2,8 +2,8 @@
 
 ##
 # Author:      Chris Ward
-# Date:        05/26/2015
-# Version:     08/26/2015
+# Created:     05/26/2015
+# Version:     09/01/2015
 # Description: An attempt to read in data from our CR850 data logger and stores
 #              to files based on table name, while streaming to plot.ly and uploading
 #              data to a server
