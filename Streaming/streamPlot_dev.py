@@ -258,12 +258,12 @@ def collect_data(table_name):
     if table_name == "Table15min":
         # Iterate through table data, and set medians
         for i in table_data:
-            NTU2_Med = i[NTU2_15_MedColm]
+            NTU2_15_Med = i[NTU2_15_MedColm]
             output = "NTU2_Med: " + str(i[NTU2_15_MedColm]) + "\n"
             print(output)
             os.write(log_file, output)
 
-            NTU3_Med = i[NTU3_15_MedColm]
+            NTU3_15_Med = i[NTU3_15_MedColm]
             output = "NTU3_Med: " + str(i[NTU3_15_MedColm]) + "\n"
             print(output)
             os.write(log_file, output)
