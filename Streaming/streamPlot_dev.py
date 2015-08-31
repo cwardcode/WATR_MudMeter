@@ -50,8 +50,8 @@ NTU2_24_MedColm = 'TurbNTU2_Med'
 NTU3_24_MedColm = 'TurbNTU3_Med'
 
 # Initialize field variables
-NTU2_Med = "0"
-NTU3_Med = "0"
+NTU2_15_Med = 0
+NTU3_15_Med = 0
 NTU2_24_Med = 0
 NTU3_24_Med = 0
 fftnTemp_Avg = 0
@@ -146,7 +146,7 @@ layout = Layout(
 fig = Figure(data=plot_data, layout=layout)
 
 # Generate plot.ly URL based on name
-unique_url = py.plot(fig, filename='WATRDataStream')
+unique_url = py.plot(fig, filename='WATRDataStream_Dev')
 
 # Holds the connections to the streams
 fftnMinTurb_link = py.Stream(stream_ids[5])
@@ -199,8 +199,8 @@ def update_plot(table):
         x = i[datetimeColm]
 
         # Average NTU Medians
-        MedAvg = ((int(NTU2_Med) + int(NTU3_Med)) / 2)
-        Med24Avg = ((int(NTU2_24_Med) + int(NTU3_24_Med)) / 2)
+        MedAvg = ((NTU2_15_Med + NTU3_15_Med) / 2.0)
+        Med24Avg = ((NTU2_24_Med + NTU3_24_Med) / 2.0)
 
         # Write new data to plot.ly
         fftnMinTurb_link.write(dict(x=x, y=MedAvg))
@@ -212,7 +212,7 @@ def update_plot(table):
         # Wait 0.80 seconds for new data to be collected
         time.sleep(0.80)
 
-        output = "Plotting new data:\nNTU_24_Med: " + str(Med24Avg) + "\nNTU3: " + str(i[liveTurbColm]) + "\nTemp: " + str(i[fftnTempColm]) + "\nDepth: " + str(i[fftnDepthColm]) + "\nMed: " + str(MedAvg) + "\n"
+        output = "Plotting new data:\nNUT_15_Med: " + str(MedAvg) + "\nNTU_24_Med: " + str(Med24Avg) + "\nNTU3: " + str(i[liveTurbColm]) + "\nTemp: " + str(i[fftnTempColm]) + "\nDepth: " + str(i[fftnDepthColm]) + "\n"
         print(output)
         os.write(log_file, output)
 
@@ -229,8 +229,8 @@ def collect_data(table_name):
     " @:param table_name - name of table to collect data and export
     """
     # 15 minute table data
-    global NTU2_Med
-    global NTU3_Med
+    global NTU2_15_Med
+    global NTU3_15_Med
 
     global fftnTemp_Avg
     global fftnDepth_Avg
@@ -258,33 +258,33 @@ def collect_data(table_name):
     if table_name == "Table15min":
         # Iterate through table data, and set medians
         for i in table_data:
-            NTU2_Med = int(i[NTU2_15_MedColm])
+            NTU2_Med = i[NTU2_15_MedColm]
             output = "NTU2_Med: " + str(i[NTU2_15_MedColm]) + "\n"
             print(output)
             os.write(log_file, output)
 
-            NTU3_Med = int(i[NTU3_15_MedColm])
+            NTU3_Med = i[NTU3_15_MedColm]
             output = "NTU3_Med: " + str(i[NTU3_15_MedColm]) + "\n"
             print(output)
             os.write(log_file, output)
 
-            fftnTemp_Avg = int(i[fftnTempColm])
+            fftnTemp_Avg = i[fftnTempColm]
             output = "Temp_Avg: " + str(i[fftnTempColm]) + "\n"
             print(output)
             os.write(log_file, output)
 
-            fftnDepth_Avg = int(i[fftnDepthColm])
+            fftnDepth_Avg = i[fftnDepthColm]
             output = "Depth_Avg: " + str(i[fftnDepthColm]) + "\n"
             print(output)
             os.write(log_file, output)
     if table_name == "Table24hr":
         for i in table_data:
-            NTU2_24_Med = (int(i[NTU2_24_MedColm]))
+            NTU2_24_Med = i[NTU2_24_MedColm]
             output = "NTU2_24_Med: " + str(i[NTU2_24_MedColm]) + "\n"
             print(output)
             os.write(log_file, output)
 
-            NTU3_24_Med = (int(i[NTU3_24_MedColm]))
+            NTU3_24_Med = i[NTU3_24_MedColm]
             output = "NTU3_24_Med: " + str(i[NTU3_24_MedColm]) + "\n"
             print(output)
             os.write(log_file, output)

@@ -101,7 +101,7 @@ echo "ok!"
 
 # Install all required packages
 echo -n "Installing required packages..."
-aptStat=$(sudo apt-get -y install python incron)
+aptStat=$(sudo apt-get -y install python daemontools)
 if [ $? -ne 0 ]
 then
     echo -e "$aptStat\nFailed to install required packages, exiting."
