@@ -70,43 +70,47 @@ has_ran = False
 log_file = os.open("logfile.txt", os.O_RDWR | os.O_APPEND | os.O_CREAT)
 
 # Set up traces for plot
-dailyTurbidMed = Scatter(
+dailyTurbidMed = dict(
     x=[],
     y=[],
+    type='scatter',
     mode='lines+markers',
     stream=Stream(
         token=stream_ids[1],
         maxpoints=80
     ),
-    name="24hr Median Turbidity (NTU)"
+    name="24hr Median Turbidity"
 )
 
-liveTurbid = Scatter(
+liveTurbid = dict(
     x=[],
     y=[],
+    type='scatter',
     mode='lines+markers',
     stream=Stream(
         token=stream_ids[2],
         maxpoints=80
     ),
-    name="Turbidity Avg Live (NTU)"
+    name="Turbidity Avg Live"
 )
 
 
-fftnMinTurbidMed = Scatter(
+fftnMinTurbidMed = dict(
     x=[],
     y=[],
+    type='scatter',
     mode='lines+markers',
     stream=Stream(
         token=stream_ids[5],
         maxpoints=80
     ),
-    name="15min Median Turbidity (NTU)"
+    name="15min Median Turbidity"
 )
 
-baseNTULevel = Scatter(
+baseNTULevel = dict(
     x=[],
     y=[0],
+    type='scatter',
     mode='lines',
     line=Line(
         opacity=0.5,
@@ -118,12 +122,14 @@ baseNTULevel = Scatter(
         maxpoints=80
     ),
     showlegend=False,
-    hoverinfo='none',
     fill='tonexty',
+    hoverinfo='none'
 )
-goodNTULevel = Scatter(
+
+goodNTULevel = dict(
     x=[],
     y=[10],
+    type='scatter',
     mode='lines',
     line=Line(
         opacity=0.5,
@@ -135,13 +141,15 @@ goodNTULevel = Scatter(
         maxpoints=80
     ),
     fill='tonexty',
-    hoverinfo='none',
-    name="Normal for trout and fish"
+    name="Normal for trout and fish",
+    hoverinfo='none'
+
 )
 
-badNTULevel = Scatter(
+badNTULevel = dict(
     x=[],
     y=[100],
+    type='scatter',
     mode='lines',
     line=Line(
         opacity=0.5,
@@ -152,14 +160,16 @@ badNTULevel = Scatter(
         token=stream_ids[3],
         maxpoints=80
     ),
-    hoverinfo='none',
     fill='tonexty',
-    name="Water Treatment Plants Can't Process over 100"
+    name="Difficult to treat water",
+    hoverinfo='none'
+
 )
 
-uglyNTULevel = Scatter(
+uglyNTULevel = dict(
     x=[],
     y=[1000],
+    type='scatter',
     mode='lines',
     line=Line(
         opacity=0.5,
@@ -170,12 +180,13 @@ uglyNTULevel = Scatter(
         token=stream_ids[4],
         maxpoints=80
     ),
-    hoverinfo='none',
     fill='tonexty',
-    name="Very bad"
+    name="Water Treatement Not Possible",
+    hoverinfo='none'
+
 )
 # Set up data sets
-plot_data = Data([fftnMinTurbidMed, dailyTurbidMed, liveTurbid, baseNTULevel, goodNTULevel, badNTULevel, uglyNTULevel])
+plot_data = [fftnMinTurbidMed, dailyTurbidMed, liveTurbid, baseNTULevel, goodNTULevel, badNTULevel, uglyNTULevel]
 
 # Configure the Layout
 layout = Layout(
@@ -186,22 +197,22 @@ layout = Layout(
     yaxis=YAxis(
         title='Turbidity(NTU)',
         range=[0,150]
-    )
+    ),
 )
 
 # Create the plot itself
-fig = Figure(data=plot_data, layout=layout)
+fig = dict(data=plot_data, layout=layout)
 
 # Generate plot.ly URL based on name
-unique_url = py.plot(fig, filename='WATRDataStream_Dev')
+unique_url = py.plot(fig, validate=False,filename='WATRDataStream_Dev')
 
 # Holds the connections to the streams
-fftnMinTurb_link = py.Stream(stream_ids[5])
 goodTurb_link = py.Stream(stream_ids[0])
 dailyTurb_link = py.Stream(stream_ids[1])
 liveTurb_link = py.Stream(stream_ids[2])
 badTurb_link = py.Stream(stream_ids[3])
 uglyTurb_link = py.Stream(stream_ids[4])
+fftnMinTurb_link = py.Stream(stream_ids[5])
 baseTurb_link = py.Stream(stream_ids[6])
 
 # Holds whether update_plot is currently running
@@ -260,13 +271,13 @@ def update_plot(table):
         liveTurbAvg = ((liveTurb1 + liveTurb2) / 2.0)
 
         # Write new data to plot.ly
-        fftnMinTurb_link.write(dict(x=x, y=MedAvg))
-        dailyTurb_link.write(dict(x=x, y=Med24Avg))
-        liveTurb_link.write(dict(x=x, y=liveTurbAvg))
-        baseTurb_link.write(dict(x=x, y=0))
-        goodTurb_link.write(dict(x=x, y=10))
-        badTurb_link.write(dict(x=x, y=100))
-        uglyTurb_link.write(dict(x=x, y=3000))
+        fftnMinTurb_link.write(dict(x=x, y=MedAvg),validate=False)
+        dailyTurb_link.write(dict(x=x, y=Med24Avg),validate=False)
+        liveTurb_link.write(dict(x=x, y=liveTurbAvg),validate=False)
+        baseTurb_link.write(dict(x=x, y=0),validate=False)
+        goodTurb_link.write(dict(x=x, y=10),validate=False)
+        badTurb_link.write(dict(x=x, y=100),validate=False)
+        uglyTurb_link.write(dict(x=x, y=3000),validate=False)
 
         # Wait 0.80 seconds for new data to be collected
         time.sleep(0.80)
@@ -297,7 +308,13 @@ def collect_data(table_name):
     global NTU3_24_Med
 
     # Start date for data  collection, should be fifteen minutes in the past
-    start_date_form = datetime.now() - timedelta(minutes=15)
+    # If table is 24 hours and script hasn't ran, get past 24 hours worth, same for Table15min
+    if table_name == "Table24hr" and not has_ran:
+        start_date_form = datetime.now() - timedelta(hours=24)
+    elif table_name == "Table15min" and not has_ran:
+        start_date_form = datetime.now() - timedelta(hours=12)
+    else:
+        start_date_form = datetime.now() - timedelta(minutes=15)
 
     # End date for  data collection, should be now, to complete our 15 minute interval
     end_date_form = datetime.now()
@@ -590,7 +607,7 @@ def main():
     print(output)
 
     # Collect data every 15 minutes
-    # TODO get_data()
+    get_data()
     output = "Got data!\n"
     os.write(log_file, output)
     # Update plot continuously
