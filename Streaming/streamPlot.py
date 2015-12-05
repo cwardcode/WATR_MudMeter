@@ -7,6 +7,13 @@
 # Description: An attempt to read in data from our CR850 data logger and stores
 #              to files based on table name, while streaming to plot.ly and uploading
 #              data to a server
+#
+# Exit Statuses:
+#   1 - Logging device could not be reached on init 
+#   2 - GetAddressInfo error occurred trying to reach remote server 
+#   3 - Socket error trying to reach remote server 
+#   4 - General error occurred and program did not exit correctly, so force exiting 
+#   5 - Internet connection error occurred 
 ##
 
 from datetime import datetime, timedelta
@@ -25,6 +32,9 @@ import threading
 import time
 import urllib2
 
+
+# Holds exit status
+exitStatus = 0
 # Check system platform, if windows, we need to open files in binary mode
 platform = platform.system()
 # Holds the device's mapped location
@@ -41,8 +51,7 @@ port = "115200"
 datetimeColm = 'Datetime'
 
 # Holds the column names containing data we're monitoring
-'''#
-
+'''
 liveTurbColm = 'TurbNTU2'
 liveTurb2Colm = 'TurbNTU3'
 liveTurbColm = 'TurbNTU'
@@ -252,7 +261,7 @@ def update_plot(table):
     global uglyTurb_link
 
     # Start date for data  collection, should be seven seconds in the past (enough time to get new data from sensors)
-    sTime = datetime.now() - timedelta(seconds=20)
+    sTime = datetime.now() - timedelta(seconds=17)
 
     # End date for  data collection, should be now, to complete our 15 minute interval
     eTime = datetime.now()
@@ -430,7 +439,8 @@ def put_data(file_name):
         print(output)
         os.write(log_file, output)
         emergency_put()
-        sys.exit(2)
+        exitStatus = 2
+        sys.exit(exitStatus)
 
     except socket.error as e:
         # Socket error occured, so let's collect data and exit
@@ -438,7 +448,8 @@ def put_data(file_name):
         print(output)
         os.write(log_file, output)
         emergency_put()
-        sys.exit(3)
+        exitStatus = 3
+        sys.exit(exitStatus)
 
     # Change into where data is stored
     c.chdir('updata')
@@ -538,7 +549,8 @@ def get_data():
         os.write(log_file, output)
         print(output)
         collect_thread.exit()
-        sys.exit(7)
+        exitStatus = 4
+        sys.exit(exitStatus)
 
 
     output = "In get_data, about to set threading timer\n"
@@ -546,6 +558,8 @@ def get_data():
     print(output)
 
     # Set timer to run method again in 15 minutes
+    FIFTN_MINUTES_N_SECS = 900
+    collect_thread = threading.Timer(FIFTN_MINUTES_N_SECS, get_data)
     collect_thread.start()
 
     output = "Setting collecting variable to true, should be false: " + str(collecting) + "\n"
@@ -614,7 +628,8 @@ def checkConnection():
         output = "Error! " + str(err)
         print(output)
         os.write(log_file, output)
-        sys.exit(8)
+        exitStatus = 5
+        sys.exit(exitStatus)
 
 def main():
     """
@@ -659,8 +674,8 @@ def main():
             update_plot(dataTable)
             output = "updated plot\n"
             os.write(log_file, output)
-            # Wait 5 seconds before updating
-            time.sleep(17)
+            # Wait 15 seconds before updating
+            time.sleep(15)
         else:
             output = "waiting to finish sending data\n"
             print(output)
@@ -691,5 +706,7 @@ def main():
 try:
     main()
 except (KeyboardInterrupt, SystemExit) as kisexit:
+    # Cancel thread timer
     collect_thread.cancel()
-    sys.exit(9);
+    # Exit with error status after thread timer is killed
+    sys.exit(exitStatus);
