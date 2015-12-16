@@ -113,7 +113,6 @@ baseNTULevel = dict(
     type='scatter',
     mode='lines',
     line=Line(
-        opacity=0.5,
         color='rgb(78,252,119)',
         width=1,
     ),
@@ -132,7 +131,6 @@ goodNTULevel = dict(
     type='scatter',
     mode='lines',
     line=Line(
-        opacity=0.5,
         color='rgb(78,252,119)',
         width=1,
     ),
@@ -152,7 +150,6 @@ badNTULevel = dict(
     type='scatter',
     mode='lines',
     line=Line(
-        opacity=0.5,
         color='rgb(253,172,79)',
         width=1,
     ),
@@ -172,7 +169,6 @@ uglyNTULevel = dict(
     type='scatter',
     mode='lines',
     line=Line(
-        opacity=0.5,
         color='rgb(253,79,79)',
         width=1,
     ),
