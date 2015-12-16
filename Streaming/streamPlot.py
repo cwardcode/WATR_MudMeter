@@ -7,6 +7,13 @@
 # Description: An attempt to read in data from our CR850 data logger and stores
 #              to files based on table name, while streaming to plot.ly and uploading
 #              data to a server
+#
+# Exit Statuses:
+#   1 - Logging device could not be reached on init 
+#   2 - GetAddressInfo error occurred trying to reach remote server 
+#   3 - Socket error trying to reach remote server 
+#   4 - General error occurred and program did not exit correctly, so force exiting 
+#   5 - Internet connection error occurred 
 ##
 
 from datetime import datetime, timedelta
@@ -23,7 +30,11 @@ import socket
 import sys
 import threading
 import time
+import urllib2
 
+
+# Holds exit status
+exitStatus = 0
 # Check system platform, if windows, we need to open files in binary mode
 platform = platform.system()
 # Holds the device's mapped location
@@ -40,14 +51,26 @@ port = "115200"
 datetimeColm = 'Datetime'
 
 # Holds the column names containing data we're monitoring
+'''
 liveTurbColm = 'TurbNTU2'
 liveTurb2Colm = 'TurbNTU3'
+liveTurbColm = 'TurbNTU'
+liveTurb2Colm = 'TurbNTU2'
 
 NTU2_15_MedColm = 'TurbNTU2_Med'
-NTU3_15_MedColm = 'TurbNTU2_Med'
+NTU3_15_MedColm = 'TurbNTU3_Med'
 
 NTU2_24_MedColm = 'TurbNTU2_Med'
 NTU3_24_MedColm = 'TurbNTU3_Med'
+'''
+liveTurbColm = 'TurbNTU'
+liveTurb2Colm = 'TurbNTU2'
+
+NTU2_15_MedColm = 'TurbNTU_Med'
+NTU3_15_MedColm = 'TurbNTU2_Med'
+
+NTU2_24_MedColm = 'TurbNTU_Med'
+NTU3_24_MedColm = 'TurbNTU2_Med'
 
 # Initialize field variables
 NTU2_15_Med = 0
@@ -214,7 +237,6 @@ baseTurb_link = py.Stream(stream_ids[6])
 # Holds whether update_plot is currently running
 collecting = False
 
-
 def update_plot(table):
     """
     " update_plot: Updates the plot.ly plot with new data continuously
@@ -235,7 +257,7 @@ def update_plot(table):
     global uglyTurb_link
 
     # Start date for data  collection, should be seven seconds in the past (enough time to get new data from sensors)
-    sTime = datetime.now() - timedelta(seconds=7)
+    sTime = datetime.now() - timedelta(seconds=17)
 
     # End date for  data collection, should be now, to complete our 15 minute interval
     eTime = datetime.now()
@@ -250,7 +272,7 @@ def update_plot(table):
         emergency_put()
         exit(1)
 
-    output = "Received new data, plotting\n"
+    output = "Received new data, plotting\n" + str(newData)
     print(output)
     os.write(log_file, output)
     # Plot new Data
@@ -389,7 +411,7 @@ def put_data(file_name):
     loc_file = open(file_name + '.csv', 'rw')
 
     # Create file descriptor for log file
-    log_file2 = open('logfile.txt', 'r')
+    #log_file2 = open('logfile.txt', 'r')
 
     output = "files opened\n"
     print(output)
@@ -413,7 +435,8 @@ def put_data(file_name):
         print(output)
         os.write(log_file, output)
         emergency_put()
-        sys.exit(2)
+        exitStatus = 2
+        sys.exit(exitStatus)
 
     except socket.error as e:
         # Socket error occured, so let's collect data and exit
@@ -421,7 +444,8 @@ def put_data(file_name):
         print(output)
         os.write(log_file, output)
         emergency_put()
-        sys.exit(3)
+        exitStatus = 3
+        sys.exit(exitStatus)
 
     # Change into where data is stored
     c.chdir('updata')
@@ -437,14 +461,14 @@ def put_data(file_name):
     print(output)
     os.write(log_file, output)
     # Get remote log file and set mode to overwrite
-    rem_log_file = c.file('logfile.txt', mode='w', bufsize=1)
-    output = "opened logfd\n"
-    print(output)
-    os.write(log_file, output)
+    #rem_log_file = c.file('logfile.txt', mode='w', bufsize=1)
+    #output = "opened logfd\n"
+    #print(output)
+    #os.write(log_file, output)
 
     # Write data and clean up
     rem_file.write(loc_file.read())
-    rem_log_file.write(log_file2.read())
+    #rem_log_file.write(log_file2.read())
     output = "Wrote files to server\n"
 
     # Flush/close data file streams
@@ -454,9 +478,9 @@ def put_data(file_name):
     loc_file.close()
 
     # Flush/close log file streams
-    rem_log_file.flush()
-    rem_log_file.close()
-    rem_log_file.close()
+    #rem_log_file.flush()
+    #rem_log_file.close()
+    #rem_log_file.close()
 
     output = "File streams closed\n"
     os.write(log_file, output)
@@ -511,29 +535,39 @@ def get_data():
     """
     " Collects data from the logger every 15 minutes and stores in file to send
     """
+    global collect_thread
     global collecting
     global has_ran
     global tables
 
-    output = "Setting collecting variable to true, should be false: " + str(collecting) + "\n"
-    os.write(log_file, output)
-    print(output)
-    # Set collecting variable to lock access to logger
-    collecting = True
+    if collecting is True:
+        output = "Error occurred, exiting\n"
+        os.write(log_file, output)
+        print(output)
+        collect_thread.exit()
+        exitStatus = 4
+        sys.exit(exitStatus)
 
-    output = "Just set collecting variable to true, should be true now: " + str(collecting) + "\n"
-    os.write(log_file, output)
-    print(output)
-
-    # 15 minutes = 900 seconds
-    FIFTN_MINUTES_N_SECS = 900
 
     output = "In get_data, about to set threading timer\n"
     os.write(log_file, output)
     print(output)
 
     # Set timer to run method again in 15 minutes
-    threading.Timer(FIFTN_MINUTES_N_SECS, get_data).start()
+    FIFTN_MINUTES_N_SECS = 900
+    collect_thread = threading.Timer(FIFTN_MINUTES_N_SECS, get_data)
+    collect_thread.start()
+
+    output = "Setting collecting variable to true, should be false: " + str(collecting) + "\n"
+    os.write(log_file, output)
+    print(output)
+
+    # Set collecting variable to lock access to logger
+    collecting = True
+
+    output = "Just set collecting variable to true, should be true now: " + str(collecting) + "\n"
+    os.write(log_file, output)
+    print(output)
 
     output = "In get_data, about to pull data from logger\n"
     os.write(log_file, output)
@@ -573,6 +607,26 @@ def get_data():
     return 0
 
 
+# 15 minutes = 900 seconds
+FIFTN_MINUTES_N_SECS = 900
+
+# Holds our thread for collecting data ever N seconds
+collect_thread = threading.Timer(FIFTN_MINUTES_N_SECS, get_data)
+
+def checkConnection():
+    try:
+        response=urllib2.urlopen('http://74.125.224.72',timeout=1)
+        output = "received response"
+        print(output)
+        os.write(log_file, output)
+        return True
+    except urllib2.URLError as err:
+        output = "Error! " + str(err)
+        print(output)
+        os.write(log_file, output)
+        exitStatus = 5
+        sys.exit(exitStatus)
+
 def main():
     """
     " Main function of the program, opens stream and allows plot to update.
@@ -609,16 +663,15 @@ def main():
     # Update plot continuously
     while True:
         if not collecting:
+            output = "Checking internet Connection\n"
+            print(output)
+            os.write(log_file, output)
+            checkConnection();
             update_plot(dataTable)
             output = "updated plot\n"
             os.write(log_file, output)
-            # Wait 5 seconds before updating
-            time.sleep(5)
-            # Keep link alive
-            fftnMinTurb_link.heartbeat()
-            output = "heartbeat sent "
-            os.write(log_file, output)
-            print(output)
+            # Wait 15 seconds before updating
+            time.sleep(15)
         else:
             output = "waiting to finish sending data\n"
             print(output)
@@ -646,4 +699,10 @@ def main():
     return 0
 
 # Call main, execute program
-main()
+try:
+    main()
+except (KeyboardInterrupt, SystemExit) as kisexit:
+    # Cancel thread timer
+    collect_thread.cancel()
+    # Exit with error status after thread timer is killed
+    sys.exit(exitStatus);
