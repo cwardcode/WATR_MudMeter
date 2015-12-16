@@ -1,20 +1,36 @@
 # CampbellDataStreaming
 ## Description
 - A system allowing data collection from a Campbell scientific datalogger using
-  a Raspebrry Pi and Python. After collection, it automatically streams data to
-  plot.ly.
+  a Raspebrry Pi and Python.
+  
+  As a requirement of the client, the program needs to provide real-time data 
+  streaming. This originally meant the chart was to be updated as frequently 
+  as possible. The python script allows data to be displayed online within 
+  seconds of being collected.
+
+  However, due to the client's data restrictions, it was decided to, instead of
+  live-streaming the data, to upload/refresh the data every hour instead. With this 
+  decision, the streaming charts were re-implemented as a static html file, 
+  building the charts from the uploaded data.
 
 ## Requirements:
 - A computer running Debian Jessie (I'm using a Raspberry Pi)
-- Internet Connection (I'm using a GSM Modem)
-- A serial port to connect to the Campbell, on a R. Pi I'm using a RS232 cape
+- Internet Connection (I'm using a Verizon Jetpack hotspot)
+- A serial port to connect to the Campbell, on a Raspberry Pi (I'm using a RS232 cape)
 
-## To Do:
-- Update plotted data to meet client requirements
-## To start logging:
-1. Clone repo
-2. Run Streaming/stream_setup.sh as sudo
-
-## Folder Layout:
-   -DataCollection <- Forked from CampbellDataCollection repository
-   -Streaming      <- Contains live data streaming code
+## Repository Layout:
+   _____________________________________________________________________________________
+   | -DataCollection <- Forked from CampbellDataCollection repository                  | 
+   | -Streaming      <- Contains live data streaming code                              |
+   | |-Data          <- Holds sample data for testing code                             |        
+   | |-cached_streamPlot.py <- First implementation - collect data from logger, parse  |
+   | |                          data, and plot it. Not efficient, and suffers from     |
+   | |                          producer-consumer problem.                             |
+   | |-streamHTML.html      <- Uses uploaded data from Raspberry Pi to render charts   |
+   | |                          upon page load. * version currently in production. *   |
+   | |-streamPlot.py        <- Live-streaming implementation, updates plotly charts    |
+   | |                         every 15 seconds. Also blocks chart updates every 15    |
+   | |                         minutes to upload newly collected data to server.       |
+   | |                         * Most efficient, but most data-intensive. *            |
+   | |-streamPlot_dev.py    <- Development version of streamPlot.py                    |      
+   |___________________________________________________________________________________|
