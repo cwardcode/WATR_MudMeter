@@ -1,0 +1,404 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Datalogger Visualization</title>
+<link rel="icon" href="favicon.ico" type="image/x-icon"/>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href='http://fonts.googleapis.com/css?family=Open+Sans:400,300,600,700,800' rel='stylesheet' type='text/css'>
+<!-- jquery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>	
+<!-- D3.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+<!-- Plotly.js -->
+<script src="https://d14fo0winaifog.cloudfront.net/plotly-basic.js"></script>
+<script src="js/skel.min.js"></script>
+<script src="js/skel-panels.min.js"></script>
+<script src="js/init.js"></script>
+<noscript>
+    <link rel="stylesheet" href="css/skel-noscript.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/style-desktop.css" />
+</noscript>
+
+<script>
+    //Holds div in which turbidity is displayed
+    var turbDiv = document.getElementById("turbDiv");
+    //Holds raw data from 15Minute tables
+    var rawData;
+    //Holds raw data from 24Hour tables
+    var data24Hr;
+    //Holds cleaned data from Campbell logger for plotting
+    var cleanData;
+    //Holds elements to be removed from site
+    var editElements;
+    //Setup jQuery event handlers
+    $(document).ready(function() {
+        $("#15minBtn").click(function() {
+            download15Data();
+            });
+        $("#24hrBtn").click(function() {
+            download24Data();
+            });
+    });
+
+    /**
+     * Function to download 15min data from plot. Copies data from plot function, then
+     * encodes it and downloads csv.
+     */
+    function download15Data() {
+        var csvHeader = "data:text/csv;charset=utf-8,";
+            cleanData = rawData.replace(/&#xd;/g, "\r");
+            csvHeader += cleanData;
+        var encodeData = encodeURI(csvHeader);
+        var link = document.createElement("a");
+            link.setAttribute("href", encodeData);
+            link.setAttribute("download", "data15min.csv");
+            link.click();
+    }
+
+
+    /**
+     * Function to download 24hr data from plot. Copies data from plot function, then
+     * encodes it and downloads csv.
+     */
+    function download24Data() {
+        var csvHeader = "data:text/csv;charset=utf-8,";
+            cleanData = data24Hr.replace(/&#xd;/g, "\r");
+            csvHeader += cleanData;
+        var encodeData = encodeURI(csvHeader);
+        var link = document.createElement("a");
+            link.setAttribute("href", encodeData);
+            link.setAttribute("download", "data24hr.csv");
+            link.click();
+    }
+
+    /**
+     * Function to get specific data from the CSV returned from HydroVu webiste.
+     *
+     * @param data The CSV table to be parsed
+     * @param dataColm The column to collect info from CSV
+     *
+     * @return lines The data we requested 
+     */
+    function getCSVData(data, dataColm) {
+        //Constant to hold number of points to plot per day.
+        var MAXPOINTS    = 97;        
+        //Constant to hold number of chars needed to remove MM/DD/YYYY: from datetime
+        var DATEFMT      = 11;
+        //Constant to hold number of chars needed to remove :SS from datetime
+        var SECFMT       = 3;
+        //Hold sum of values for data
+        var sumValue     = 0;
+        //Holds count of objects 
+        var countValue   = 0;
+        //Hold average value for data
+        var averageValue = 0;
+        //Remove formatting
+        var dataLines = data.split(/\r\n|\n/);
+        //Store file headers
+        var headers = dataLines[0].split(',');
+        //Holds our return array containing requested data
+        var lines = [];
+        //Holds actual number of data points for set of dat
+        var cnt = 0;
+        for (var i=1; i<dataLines.length; i++) {
+            //Split CSV data into lines
+            var fullData = dataLines[i].split(',');
+            if (fullData.length == headers.length) {
+                var dataString = "";
+                for (var j = 0; j<headers.length; j++) {
+                    // Check to see if we are in requested header
+                    if(headers[j] == dataColm && dataColm == "Datetime") {
+                        //Remove date from datetime field, build string
+                        dataString += fullData[j].substring(DATEFMT, fullData[j].length - SECFMT) + " ";
+                    } else if(headers[j] == dataColm) {
+                        //Build string with data in field
+                        dataString += fullData[j] + ", ";
+                    }
+                }
+            }
+            //Add data to return array
+            lines.push(dataString);
+        }
+
+        //Return only entries from past day
+        var dailyData = lines.slice(lines.length - MAXPOINTS, lines.length - 1) 
+        return dailyData;
+    } 
+    
+    /**
+     * Function to get data from HydroVu website, sanitize it, and add it to a
+     * Plotly plot.
+     */
+    function getData(){                                                             
+        //Get 24hr data
+        jQuery.get('data/Table24hr.csv', function(res) {
+            rawData = JSON.parse(JSON.stringify(res, null, 2));
+            data24Hr = rawData.replace(/&#xd;/g, "");       
+        });
+        //Get 15 min data
+        jQuery.get('data/Table15min.csv', function(res) {
+                //Parse JSON, remove carriage return values 
+                rawData = JSON.parse(JSON.stringify(res, null, 2));
+                //Sanitize data, remove formatting
+                data = rawData.replace(/&#xd;/g, "");       
+                //Get timeseries points for data 
+                timeseries = getCSVData(data,"Datetime"); 
+                //Get data for Turbidity chart
+                turbNTU = getCSVData(data,"TurbNTU_Med");
+                turbNTU_24 = getCSVData(data24Hr,"TurbNTU_Med");
+
+                turbNTU2 = getCSVData(data,"TurbNTU2_Med");
+                turbNTU2_24 = getCSVData(data24Hr,"TurbNTU2_Med");
+                //Get data for Temperature Chart
+                temp15min = getCSVData(data,"AquiTemp_Med");
+                temp24hr = getCSVData(data24Hr,"AquiTemp_Med");
+                //Get data for Water Level Chart
+                level15min = getCSVData(data,"DepthFT_Med");
+                level24hr = getCSVData(data24Hr,"DepthFT_Avg");
+
+                /**
+                 * Since any data with only one entry will be plotted only one time, we need
+                 * to expand these data points across our entire chart. This loop does that.
+                 */
+                for(var j = 0; j < turbNTU.length - 2; j++) {
+                    turbNTU_24.push(turbNTU_24[turbNTU_24.length-1]);
+                    turbNTU2_24.push(turbNTU2_24[turbNTU2_24.length-1]);
+                    temp24hr.push(temp24hr[temp24hr.length-1]);
+                    level24hr.push(level24hr[level24hr.length-1]);
+                }
+
+                //Create and populate NTU threshold values
+                var goodNTUValue = [];
+                var medNTUValue  = [];
+                var badNTUValue  = [];
+                var uglyNTUValue = [];
+
+                for(var j = 0; j < turbNTU.length; j++) {
+                    goodNTUValue.push(10);
+                    medNTUValue.push(50);
+                    badNTUValue.push(100);
+                    uglyNTUValue.push(150);
+                }
+
+                //Set up TurbNTU turbidity trace for plot
+                var goodNTU = {
+                    x: timeseries,
+                    y: goodNTUValue,
+                    type: 'scatter',
+                    fill: 'tonexty',
+                    hoverinfo: 'none',
+                    line: {
+                        color: "rgb(78,252,119)",
+                        width: 1
+                    },
+                    name:'Upper limit for NC trout-habitat'
+
+                };
+
+                //Set up TurbNTU turbidity trace for plot
+                var medNTU = {
+                    x: timeseries,
+                    y: medNTUValue,
+                    type: 'scatter',
+                    fill: 'tonexty',
+                    hoverinfo: 'none',
+                    line: {
+                        color: "rgb(245,222,173)",
+                        width: 1
+                    },
+                    name:'Upper limit for healthy streams in NC'
+
+                };
+                //Set up TurbNTU turbidity trace for plot
+                var badNTU = {
+                    x: timeseries,
+                    y: badNTUValue,
+                    type: 'scatter',
+                    fill: 'tonexty',
+                    hoverinfo: 'none',
+                    line: {
+                        color: "rgb(253,172,79)",
+                        width: 1
+                    },
+                    name:'Intake water difficult to treat'
+
+                };
+                //Set up TurbNTU turbidity trace for plot
+                var uglyNTU = {
+                    x: timeseries,
+                    y: uglyNTUValue,
+                    type: 'scatter',
+                    fill: 'tonexty',
+                    hoverinfo: 'none',
+                    line: {
+                        color: "rgb(253,79,79)",
+                        width: 1
+                    },
+                    name:'Cannot be treated'
+
+                };
+                //Set up TurbNTU turbidity trace for plot
+                var turbNTUTrace = {
+                    x: timeseries,
+                    y: turbNTU,
+                    type: 'scatter',
+                    name:'TurbNTU Sensor 15min Med'
+
+                };
+                //Set up TurbNTU2 turbidity trace for plot
+                var turbNTU2Trace = {
+                    x: timeseries,
+                    y: turbNTU2,
+                    type: 'scatter',
+                    name: 'TurbNTU2 Sensor 15min Med'
+ 
+                };
+                //Set up TurbNTU2 turbidity trace for plot
+                var turbNTUTrace24 = {
+                    x: timeseries,
+                    y: turbNTU_24,
+                    type: 'scatter',
+                    name: 'TurbNTU Sensor 24Hr Med'
+ 
+                };
+                //Set up TurbNTU2 turbidity trace for plot
+                var turbNTU2Trace24 = {
+                    x: timeseries,
+                    y: turbNTU2_24,
+                    type: 'scatter',
+                    name: 'TurbNTU2 Sensor 24Hr Med'
+ 
+                };
+                //Set up Temperature 15min  trace for plot
+                var temp15MinTrace = {
+                    x: timeseries,
+                    y: temp15min,
+                    type: 'scatter',
+                    name: 'Temp. 15min Median'
+ 
+                };
+                //Set up Temperature 15min  trace for plot
+                var temp24hrTrace = {
+                    x: timeseries,
+                    y: temp24hr,
+                    type: 'scatter',
+                    name: 'Temp. 24hr Median'
+ 
+                };
+                //Set up Temperature 15min  trace for plot
+                var level15MinTrace = {
+                    x: timeseries,
+                    y: level15min,
+                    type: 'scatter',
+                    name: 'Level 15min Median'
+ 
+                };
+                //Set up Temperature 15min  trace for plot
+                var level24hrTrace = {
+                    x: timeseries,
+                    y: level24hr,
+                    type: 'scatter',
+                    name: 'Level 24hr Median'
+ 
+                };
+                //Set up layout for chart
+                var layout = {
+                  title:'\"Muddyness\" \(Turbidity\) in Scotts Creek',
+                  xaxis: {
+                      title: 'Time'
+                  },
+                  yaxis: {
+                      range: [0, 160],
+                      title: 'Turbidity (NTU)'
+                  }
+                };
+
+                //Set up plot's traces
+                var plotTurbData = [goodNTU, medNTU, badNTU, uglyNTU, turbNTUTrace,turbNTUTrace24, turbNTU2Trace, turbNTU2Trace24];
+                var plotTempData = [temp15MinTrace, temp24hrTrace];
+                var plotLevelData = [level15MinTrace, level24hrTrace];
+
+                //Create plot and set div for it to load into
+                Plotly.newPlot('turbDiv', plotTurbData, layout);
+
+
+                //Set up layout for chart
+                var layout = {
+                  title:'Water Depth in Scotts Creek',
+                  xaxis: {
+                      title: 'Time'
+                  },
+                  yaxis: {
+                      title: 'Water Depth (Ft)'
+                  }
+                };
+                Plotly.newPlot('levelDiv', plotLevelData, layout);
+
+                //Set up layout for chart
+                var layout = {
+                  title:'Water Temperature in Scotts Creek',
+                  xaxis: {
+                      title: 'Time'
+                  },
+                  yaxis: {
+                      title: 'Temperature (C)'
+                  }
+                };
+                Plotly.newPlot('tempDiv', plotTempData, layout);
+
+                //Get elements that have "edit" link to plotly
+                editElements = document.getElementsByClassName("js-plot-link-container");
+                //Loop through "edit" elements, make them invisible
+                for( var i = 0; i < editElements.length; i++) {
+                    editElements[i].style.display="none";
+                }
+            });                                                                         
+    } 
+    //Build graphs
+    getData();
+</script>
+</head>
+<body class="homepage">
+<div id="header">
+    <div class="container">
+        <div id="logo">
+        </div>
+    </div>
+</div>
+<div id="main">
+
+    <div class="container">
+        <section>
+            <header>
+                <h2>Here you can view a live stream* of data from our sensors in Scotts Creek.</h2>
+            </header>
+            <div id="turbDiv">
+            <table>
+                <tr>
+                    <td>
+                        <div id="levelDiv">
+                    </td>
+                    <td>
+                        <div id="tempDiv">
+                </td>
+                </tr>
+            </table>
+        </section>
+        <h2>*Stream updates once per hour. If you would like to download the chart's data, you may do so below.</h2>
+        <center>   
+            <table>
+                <tr>
+                    <td>
+                        <button id="15minBtn"/>15 Minute Data</button>
+                    </td>
+                    <td>
+                        <button id="24hrBtn">24 Hour Data</button>
+                </td>
+                </tr>
+            </table>
+        </center>   
+    </div>
+</div>
+</body>
+</html>
