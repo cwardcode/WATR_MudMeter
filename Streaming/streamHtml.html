@@ -111,7 +111,12 @@
                     if(headers[j] == dataColm && dataColm == "Datetime") {
                         //Remove date from datetime field, build string
                         dataString += fullData[j].substring(DATEFMT, fullData[j].length - SECFMT) + " ";
-                    } else if(headers[j] == dataColm) {
+                    } else if(headers[j] == dataColm && dataColm == "DepthFT_Med") {
+                        //Build string with data in field
+                        dataString += (+fullData[j] - 0.99 + 1.45).toFixed(3) + ", ";
+                        console.log(dataString);
+                    }
+                      else if(headers[j] == dataColm) {
                         //Build string with data in field
                         dataString += fullData[j] + ", ";
                     }
@@ -330,6 +335,7 @@
                       title: 'Time'
                   },
                   yaxis: {
+                      range: [0,3.5],
                       title: 'Water Depth (Ft)'
                   }
                 };
