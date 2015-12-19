@@ -82,7 +82,7 @@
      */
     function getCSVData(data, dataColm) {
         //Constant to hold number of points to plot per day.
-        var MAXPOINTS    = 97;        
+        var MAXPOINTS    = 385;        
         //Constant to hold number of chars needed to remove MM/DD/YYYY: from datetime
         var DATEFMT      = 11;
         //Constant to hold number of chars needed to remove :SS from datetime
@@ -137,12 +137,12 @@
      */
     function getData(){                                                             
         //Get 24hr data
-        jQuery.get('data/Table24hr.csv', function(res) {
+        jQuery.get('http://aws.cwardcode.com/data/Table24hr.csv', function(res) {
             rawData = JSON.parse(JSON.stringify(res, null, 2));
             data24Hr = rawData.replace(/&#xd;/g, "");       
         });
         //Get 15 min data
-        jQuery.get('data/Table15min.csv', function(res) {
+        jQuery.get('http://aws.cwardcode.com/data/Table15min.csv', function(res) {
                 //Parse JSON, remove carriage return values 
                 rawData = JSON.parse(JSON.stringify(res, null, 2));
                 //Sanitize data, remove formatting
@@ -153,14 +153,14 @@
                 turbNTU = getCSVData(data,"TurbNTU_Med");
                 turbNTU_24 = getCSVData(data24Hr,"TurbNTU_Med");
 
-                turbNTU2 = getCSVData(data,"TurbNTU2_Med");
-                turbNTU2_24 = getCSVData(data24Hr,"TurbNTU2_Med");
+                //turbNTU2 = getCSVData(data,"TurbNTU2_Med");
+                //turbNTU2_24 = getCSVData(data24Hr,"TurbNTU2_Med");
                 //Get data for Temperature Chart
                 temp15min = getCSVData(data,"AquiTemp_Med");
-                temp24hr = getCSVData(data24Hr,"AquiTemp_Med");
+                //temp24hr = getCSVData(data24Hr,"AquiTemp_Med");
                 //Get data for Water Level Chart
                 level15min = getCSVData(data,"DepthFT_Med");
-                level24hr = getCSVData(data24Hr,"DepthFT_Avg");
+                //level24hr = getCSVData(data24Hr,"DepthFT_Avg");
 
                 /**
                  * Since any data with only one entry will be plotted only one time, we need
@@ -168,9 +168,9 @@
                  */
                 for(var j = 0; j < turbNTU.length - 2; j++) {
                     turbNTU_24.push(turbNTU_24[turbNTU_24.length-1]);
-                    turbNTU2_24.push(turbNTU2_24[turbNTU2_24.length-1]);
-                    temp24hr.push(temp24hr[temp24hr.length-1]);
-                    level24hr.push(level24hr[level24hr.length-1]);
+                    //turbNTU2_24.push(turbNTU2_24[turbNTU2_24.length-1]);
+                    //temp24hr.push(temp24hr[temp24hr.length-1]);
+                    //level24hr.push(level24hr[level24hr.length-1]);
                 }
 
                 //Create and populate NTU threshold values
@@ -212,7 +212,7 @@
                         color: "rgb(245,222,173)",
                         width: 1
                     },
-                    name:'Upper limit for healthy streams in NC'
+                    name:'Upper limit (50NTU) for healthy streams in NC'
 
                 };
                 //Set up TurbNTU turbidity trace for plot
@@ -226,7 +226,7 @@
                         color: "rgb(253,172,79)",
                         width: 1
                     },
-                    name:'Intake water difficult to treat'
+                    name:'Intake water > 100 NTUdifficult to treat'
 
                 };
                 //Set up TurbNTU turbidity trace for plot
@@ -240,7 +240,7 @@
                         color: "rgb(253,79,79)",
                         width: 1
                     },
-                    name:'Cannot be treated'
+                    name:'Intake water  > 150 NTU cannot be treated'
 
                 };
                 //Set up TurbNTU turbidity trace for plot
@@ -248,26 +248,29 @@
                     x: timeseries,
                     y: turbNTU,
                     type: 'scatter',
-                    name:'TurbNTU Sensor 15min Med'
+                    name:'Turb 15min Med'
 
                 };
                 //Set up TurbNTU2 turbidity trace for plot
-                var turbNTU2Trace = {
+                /**
+                 var turbNTU2Trace = {
                     x: timeseries,
                     y: turbNTU2,
                     type: 'scatter',
                     name: 'TurbNTU2 Sensor 15min Med'
  
                 };
+                */
                 //Set up TurbNTU2 turbidity trace for plot
                 var turbNTUTrace24 = {
                     x: timeseries,
                     y: turbNTU_24,
                     type: 'scatter',
-                    name: 'TurbNTU Sensor 24Hr Med'
+                    name: 'Turb 24Hr-avg Med'
  
                 };
                 //Set up TurbNTU2 turbidity trace for plot
+                /*
                 var turbNTU2Trace24 = {
                     x: timeseries,
                     y: turbNTU2_24,
@@ -275,6 +278,7 @@
                     name: 'TurbNTU2 Sensor 24Hr Med'
  
                 };
+                */
                 //Set up Temperature 15min  trace for plot
                 var temp15MinTrace = {
                     x: timeseries,
@@ -283,6 +287,7 @@
                     name: 'Temp. 15min Median'
  
                 };
+                /*
                 //Set up Temperature 15min  trace for plot
                 var temp24hrTrace = {
                     x: timeseries,
@@ -291,6 +296,7 @@
                     name: 'Temp. 24hr Median'
  
                 };
+                */
                 //Set up Temperature 15min  trace for plot
                 var level15MinTrace = {
                     x: timeseries,
@@ -299,6 +305,7 @@
                     name: 'Level 15min Median'
  
                 };
+                /*
                 //Set up Temperature 15min  trace for plot
                 var level24hrTrace = {
                     x: timeseries,
@@ -307,6 +314,7 @@
                     name: 'Level 24hr Median'
  
                 };
+                */
                 //Set up layout for chart
                 var layout = {
                   title:'\"Muddyness\" \(Turbidity\) in Scotts Creek',
@@ -320,9 +328,9 @@
                 };
 
                 //Set up plot's traces
-                var plotTurbData = [goodNTU, medNTU, badNTU, uglyNTU, turbNTUTrace,turbNTUTrace24, turbNTU2Trace, turbNTU2Trace24];
-                var plotTempData = [temp15MinTrace, temp24hrTrace];
-                var plotLevelData = [level15MinTrace, level24hrTrace];
+                var plotTurbData = [goodNTU, medNTU, badNTU, uglyNTU, turbNTUTrace,turbNTUTrace24];//, turbNTU2Trace, turbNTU2Trace24];
+                var plotTempData = [temp15MinTrace];//, temp24hrTrace];
+                var plotLevelData = [level15MinTrace];//, level24hrTrace];
 
                 //Create plot and set div for it to load into
                 Plotly.newPlot('turbDiv', plotTurbData, layout);
@@ -379,7 +387,16 @@
             <header>
                 <h2>Here you can view a live stream* of data from our sensors in Scotts Creek.</h2>
             </header>
-            <div id="turbDiv">
+            <div id="turbDiv"></div>
+            <div id="meterInformation" align="left">
+            <b>To interpret Mud Meter values, compare measurements to standards:</b> 
+            <ul style="list-style-type=disc">
+                <li><font style="color:#FD4F4F">Water treatment limits based on operating rules for the WCU Water Treatment Plant located in Cullowhee</li></font>
+                <li style="color:#FDAC4F">Upper limit for streams in NC refers to limits set by the state Division of Water Quality</li>
+                <li style="color:#4ED477">Special upper limit for trout waters pertains only to designated trout streams</li>
+            </ul> 
+            The 24-hr turbidity is a moving average that is recalculated every 15 minutes. 
+            </div>
             <table>
                 <tr>
                     <td>
@@ -392,6 +409,7 @@
             </table>
         </section>
         <h2>*Stream updates once per hour. If you would like to download the chart's data, you may do so below.</h2>
+        <h2><b>PROVISIONAL DATA</B> Subject to revision. Trial period -- data may be halted for corrections to system.</h2>
         <center>   
             <table>
                 <tr>
