@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.ico">
+
+    <title>WATR Data Visualization</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <link href="./assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="./css/dashboard.css" rel="stylesheet">
+
+    <!-- jquery -->
+    <script src="./js/jquery.min.js"></script>    
+
+    <!-- D3.js -->
+    <script src="./js/d3.min.js"></script>
+
+    <!-- Plotly.js -->
+    <script src="./js/plotly-basic.js"></script>
+
+    <script>
+    //Reloads page if orientation changes 
+    window.onorientationchange = function() { location.reload() };
+    //Holds div in which turbidity is displayed
+    var turbDiv = document.getElementById("turbDiv");
+    //Holds raw data from 15Minute tables
+    var rawData;
+    //Holds raw data from 24Hour tables
+    var data24Hr;
+    //Holds cleaned data from Campbell logger for plotting
+    var cleanData;
+    //Holds elements to be removed from site
+    var editElements;
+    //Setup jQuery event handlers
+    $(document).ready(function() {
+        $("#15minBtn").click(function() {
+            download15Data();
+            });
+        $("#24hrBtn").click(function() {
+            download24Data();
+            });
+    });
+
+    /**
+     * Function to download 15min data from plot. Copies data from plot function, then
+     * encodes it and downloads csv.
+     */
+    function download15Data() {
+        var csvHeader = "data:text/csv;charset=utf-8,";
+            cleanData = rawData.replace(/&#xd;/g, "\r");
+            csvHeader += cleanData;
+        var encodeData = encodeURI(csvHeader);
+        var link = document.createElement("a");
+            link.setAttribute("href", encodeData);
+            link.setAttribute("download", "data15min.csv");
+            link.click();
+    }
+
+    /**
+     * Function to download 24hr data from plot. Copies data from plot function, then
+     * encodes it and downloads csv.
+     */
+    function download24Data() {
+        var csvHeader = "data:text/csv;charset=utf-8,";
+            cleanData = data24Hr.replace(/&#xd;/g, "\r");
+            csvHeader += cleanData;
+        var encodeData = encodeURI(csvHeader);
+        var link = document.createElement("a");
+            link.setAttribute("href", encodeData);
+            link.setAttribute("download", "data24hr.csv");
+            link.click();
+    }
+
+    /**
+     * Function to get specific data from the CSV returned from HydroVu webiste.
+     *
+     * @param data The CSV table data to be parsed
+     * @param dataColm The column to collect info from CSV
+     *
+     * @return lines The data we requested 
+     */
+    function getCSVData(data, dataColm) {
+        //Constant to hold number of points to plot per day.
+        var MAXPOINTS    = 385;        
+        //Constant to hold number of chars needed to remove MM/DD/YYYY: from datetime
+        var DATEFMT      = 11;
+        //Constant to hold number of chars needed to remove :SS from datetime
+        var SECFMT       = 3;
+        //Hold sum of values for data
+        var sumValue     = 0;
+        //Holds count of objects 
+        var countValue   = 0;
+        //Hold average value for data
+        var averageValue = 0;
+        //Remove formatting
+        var dataLines = data.split(/\r\n|\n/);
+        //Store file headers
+        var headers = dataLines[0].split(',');
+        //Holds our return array containing requested data
+        var lines = [];
+        //We're only plotting the last day's worth of data. The plot updates every 15 minutes, so
+        //we only need the last 96 entries from the file.
+        var FftnMinIntervalsPerDay = 96; 
+        //Find line to  start on
+        var startLine = dataLines.length - FftnMinIntervalsPerDay;
+        //Check to see if number is negative, if so, only use amount of lines we have.
+        if(startLine < 0) {
+            startLine = 0;
+        }
+        //Holds actual number of data points for set of dat
+        var cnt = 0;
+        for (var i=startLine; i<dataLines.length; i++) {
+            //Split CSV data into lines
+            var fullData = dataLines[i].split(',');
+            if (fullData.length == headers.length) {
+                var dataString = "";
+                for (var j = 0; j<headers.length; j++) {
+                    // Check to see if we are in requested header
+                    if(headers[j] == dataColm && dataColm == "Datetime") {
+                        //Remove date from datetime field, build string
+                        dataString += fullData[j].substring(DATEFMT, fullData[j].length - SECFMT) 
+                                                                                              + " ";
+                    } else if(headers[j] == dataColm && dataColm == "DepthFT_Med") {
+                        //Build string with data in field
+                        dataString += (+fullData[j] - 0.99 + 1.45).toFixed(3) + ", ";
+                    }
+                      else if(headers[j] == dataColm) {
+                        //Build string with data in field
+                        dataString += fullData[j] + ", ";
+                    }
+                }
+            }
+            //Add data to return array
+            lines.push(dataString);
+        }
+
+        //Return only entries from past day
+        var dailyData = lines.slice(lines.length - MAXPOINTS, lines.length - 1) 
+        return dailyData;
+    } 
+    
+    /**
+     * Function to get data from HydroVu website, sanitize it, and add it to a
+     * Plotly plot.
+     */
+    function getData(){                                                             
+        //Get 24hr data
+        jQuery.get('/data/Table24hr.csv', function(res) {
+            rawData = JSON.parse(JSON.stringify(res, null, 2));
+            data24Hr = rawData.replace(/&#xd;/g, "");       
+        });
+        //Get 15 min data
+        jQuery.get('/data/Table15min.csv', function(res) {
+                //Parse JSON, remove carriage return values 
+                rawData = JSON.parse(JSON.stringify(res, null, 2));
+                //Sanitize data, remove formatting
+                data = rawData.replace(/&#xd;/g, "");       
+                //Get timeseries points for data 
+                timeseries = getCSVData(data,"Datetime"); 
+                //Get turbidity 15min data
+                turbNTU = getCSVData(data,"TurbNTU_Med");
+                //Get turbidity 24hr data
+                turbNTU_24Data = getCSVData(data24Hr,"TurbNTU_Med");
+                //Get most recent 24 hour sample from turbNTU sensor
+                turbNTU_24_sample = turbNTU_24Data[turbNTU_24Data.length-1];
+                //Get most recent 24 hour sample from turbNTU sensor
+                turbNTU2_24_sample = getCSVData(data24Hr,"TurbNTU2_Med")[turbNTU_24Data.length-1];
+                //Calculate median average
+                turbNTU_24Avg = (parseFloat(turbNTU_24_sample) + parseFloat(turbNTU2_24_sample))/2.0;
+
+                turbNTU_24 = []; 
+                //Get data for Temperature Chart
+                temp15min = getCSVData(data,"AquiTemp_Med");
+                //temp24hr = getCSVData(data24Hr,"AquiTemp_Med");
+                //Get data for Water Level Chart
+                level15min = getCSVData(data,"DepthFT_Med");
+                //level24hr = getCSVData(data24Hr,"DepthFT_Avg");
+
+                /**
+                 * Since any data with only one entry will be plotted only one time, we need
+                 * to expand these data points across our entire chart. This loop does that.
+                 */
+                for(var j = 0; j < turbNTU.length; j++) {
+                    turbNTU_24.push(turbNTU_24Avg);
+                }
+                //Create and populate NTU threshold values
+                var goodNTUValue = [];
+                var medNTUValue  = [];
+                var badNTUValue  = [];
+                var uglyNTUValue = [];
+
+                for(var j = 0; j < turbNTU.length; j++) {
+                    goodNTUValue.push(10);
+                    medNTUValue.push(50);
+                    badNTUValue.push(100);
+                    uglyNTUValue.push(150);
+                }
+
+                //Set up TurbNTU turbidity trace for plot
+                var goodNTU = {
+                    x: timeseries,
+                    y: goodNTUValue,
+                    type: 'scatter',
+                    fill: 'tonexty',
+                    hoverinfo: 'none',
+                    line: {
+                        color: "rgb(78,252,119)",
+                        width: 1
+                    },
+                    name:'Upper limit for NC trout-habitat'
+                };
+
+                //Set up TurbNTU turbidity trace for plot
+                var medNTU = {
+                    x: timeseries,
+                    y: medNTUValue,
+                    type: 'scatter',
+                    fill: 'tonexty',
+                    hoverinfo: 'none',
+                    line: {
+                        color: "rgb(245,222,173)",
+                        width: 1
+                    },
+                    name:'Upper limit (50NTU) for healthy streams in NC'
+                };
+                //Set up TurbNTU turbidity trace for plot
+                var badNTU = {
+                    x: timeseries,
+                    y: badNTUValue,
+                    type: 'scatter',
+                    fill: 'tonexty',
+                    hoverinfo: 'none',
+                    line: {
+                        color: "rgb(253,172,79)",
+                        width: 1
+                    },
+                    name:'Intake water > 100 NTUdifficult to treat'
+                };
+                //Set up TurbNTU turbidity trace for plot
+                var uglyNTU = {
+                    x: timeseries,
+                    y: uglyNTUValue,
+                    type: 'scatter',
+                    fill: 'tonexty',
+                    hoverinfo: 'none',
+                    line: {
+                        color: "rgb(253,79,79)",
+                        width: 1
+                    },
+                    name:'Intake water  > 150 NTU cannot be treated'
+                };
+                //Set up TurbNTU turbidity trace for plot
+                var turbNTUTrace = {
+                    x: timeseries,
+                    y: turbNTU,
+                    type: 'scatter',
+                    name:'Turb 15min Med'
+                };
+                //Set up TurbNTU2 turbidity trace for plot
+                /**
+                 var turbNTU2Trace = {
+                    x: timeseries,
+                    y: turbNTU2,
+                    type: 'scatter',
+                    name: 'TurbNTU2 Sensor 15min Med'
+                };
+                */
+                //Set up TurbNTU2 turbidity trace for plot
+                var turbNTUTrace24 = {
+                    x: timeseries,
+                    y: turbNTU_24,
+                    type: 'scatter',
+                    name: 'Turb 24hr-avg Med'
+ 
+                };
+                //Set up TurbNTU2 turbidity trace for plot
+                /*
+                var turbNTU2Trace24 = {
+                    x: timeseries,
+                    y: turbNTU2_24,
+                    type: 'scatter',
+                    name: 'TurbNTU2 Sensor 24hr Med'
+                };
+
+                */
+                //Set up Temperature 15min  trace for plot
+                var temp15MinTrace = {
+                    x: timeseries,
+                    y: temp15min,
+                    type: 'scatter',
+                    name: 'Temp. 15min Median'
+                };
+
+                /**
+                //Set up Temperature 15min  trace for plot
+                var temp24hrTrace = {
+                    x: timeseries,
+                    y: temp24hr,
+                    type: 'scatter',
+                    name: 'Temp. 24hr Median'
+                };
+
+                */
+                //Set up Temperature 15min  trace for plot
+                var level15MinTrace = {
+                    x: timeseries,
+                    y: level15min,
+                    type: 'scatter',
+                    name: 'Level 15min Median'
+                };
+
+                /*
+                //Set up Temperature 15min  trace for plot
+                var level24hrTrace = {
+                    x: timeseries,
+                    y: level24hr,
+                    type: 'scatter',
+                    name: 'Level 24hr Median'
+                };
+
+                */
+                //Set up layout for chart
+                var layout = {
+                  title:'\"Muddyness\" \(Turbidity\) in Scotts Creek',
+                  xaxis: {
+                      title: 'Time'
+                  },
+                  yaxis: {
+                      range: [0, 160],
+                      title: 'Turbidity (NTU)'
+                  }
+                };
+
+                //Set up plot's traces
+                var plotTurbData = [goodNTU, medNTU, badNTU, uglyNTU, turbNTUTrace,turbNTUTrace24];//, turbNTU2Trace, turbNTU2Trace24];
+                var plotTempData = [temp15MinTrace];//, temp24hrTrace];
+                var plotLevelData = [level15MinTrace];//, level24hrTrace];
+
+                //Create plot and set div for it to load into
+                Plotly.newPlot('turbDiv', plotTurbData, layout);
+
+
+                //Set up layout for chart
+                var layout = {
+                  title:'Water Depth in Scotts Creek',
+                  xaxis: {
+                      title: 'Time'
+                  },
+                  yaxis: {
+                      range: [0,3.5],
+                      title: 'Water Depth (Ft)'
+                  }
+                };
+                Plotly.newPlot('levelDiv', plotLevelData, layout);
+
+                //Set up layout for chart
+                var layout = {
+                  title:'Water Temperature in Scotts Creek',
+                  xaxis: {
+                      title: 'Time'
+                  },
+                  yaxis: {
+                      title: 'Temperature (C)'
+                  }
+                };
+                Plotly.newPlot('tempDiv', plotTempData, layout);
+
+                //Get elements that have "edit" link to plotly
+                editElements = document.getElementsByClassName("js-plot-link-container");
+                //Loop through "edit" elements, make them invisible
+                for( var i = 0; i < editElements.length; i++) {
+                    editElements[i].style.display="none";
+                }
+            });                                                                         
+    } 
+    //Build graphs
+    getData();
+</script>
+
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" 
+              data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a href="."><img width="60%" src="./img/WATRlogo.png"/></a>
+          </div>
+          <div id="navbar" class="navbar-collapse collapse">                                          
+          <ul class="nav navbar-nav navbar-right">                                                  
+            <li><a href=".">Live Graphs</a></li>
+            <li><a href="rawdata.html">Raw Data</a></li>
+            <li><a href="about.html">About Data</a></li>
+          </ul>         
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-3 col-md-2 sidebar">
+          <ul class="nav nav-sidebar">
+            <li class="active"><a href=".">Live Graphs<span class="sr-only">(current)</span></a></li>
+            <li><a href="rawdata.html">Raw Data</a></li>
+            <li><a href="about.html">About Data</a></li>
+          </ul>
+        </div>
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+            <h1 class="page-header"><center>Live streaming data from WATR Sensors</center></h1>
+            <div id="turbDiv"></div>
+            <div id="meterInformation" style="width:100%;">
+                <div style="width: 50%; margin: 0px auto;">
+                <b>To interpret Mud Meter values, compare measurements to standards:</b> 
+                <ul style="list-style-type=disc">
+                    <li><font style="color:#FD4F4F">Water treatment limits based on operating rules 
+                        for the WCU Water Treatment Plant located in Cullowhee</li></font>
+                    <li style="color:#FDAC4F">Upper limit for streams in NC refers to limits set by the 
+                    state Division of Water Quality</li>
+                    <li style="color:#4ED477">Special upper limit for trout waters pertains only to 
+                    designated trout streams</li>
+                </ul> 
+                The 24-hr turbidity is a moving average that is recalculated every 15 minutes. 
+                </div>
+            </div>
+            <div id="levelDiv"></div>
+            <div id="tempDiv"></div>
+        <center>   
+        <h4>*Stream updates once per hour. If you would like to download the chart's data, you may 
+            do so below.</h4>
+        <h4><b>PROVISIONAL DATA</B> Subject to revision. Trial period -- data may be halted for 
+            corrections to system.</h4>
+        </center>   
+    </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="js/bootstrap.min.js"></script>
+    <!-- Just to make our placeholder images work. Don't actually copy the next line! -->
+    <script src="./assets/js/vendor/holder.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="./assets/js/ie10-viewport-bug-workaround.js"></script>
+  </body>
+</html>
+

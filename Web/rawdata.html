@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.ico">
+
+    <title>WATR Data Visualization</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <link href="./assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="./css/dashboard.css" rel="stylesheet">
+    <link href="./css/csvtable.css" rel="stylesheet">
+    <!-- jquery -->
+    <script src="./js/jquery.min.js"></script>    
+    <!-- jQuery csvToTable extension -->
+    <script src="./js/jquery.csvToTable.js"></script>
+
+    <script src="./assets/js/ie-emulation-modes-warning.js"></script>
+
+
+    <script type="text/javascript">
+        //Convert CSV data to an html table and add it to the document. Also, if necessary make 
+        //scrollable.
+        $(function() {
+
+            $('#CSVTable')
+            .CSVToTable('http://aws.cwardcode.com/test/getCSV.php?name=table24hr&order=desc')
+            .css({overflow:'auto'});
+            $('#CSVTable2')
+            .CSVToTable('http://aws.cwardcode.com/test/getCSV.php?name=table15min&order=desc')
+            .css({overflow:'auto'}).css({height:'470px'});
+        });
+
+        $(document).ready(function() {
+            $("#15minBtn").click(function() {
+                download15Data();
+                });
+            $("#24hrBtn").click(function() {
+                download24Data();
+                });
+        });
+        /**
+         * Function to download 15min data from plot. Copies data from plot function, then
+         * encodes it and downloads csv.
+         */
+        function download15Data() {
+            var link = document.createElement("a");
+                link.setAttribute("href", "http://aws.cwardcode.com/test/getCSV.php?name=table15min");
+                link.click();
+        }
+
+        /**
+         * Function to download 24hr data from plot. Copies data from plot function, then
+         * encodes it and downloads csv.
+         */
+        function download24Data() {
+            var link = document.createElement("a");
+                link.setAttribute("href", "http://aws.cwardcode.com/test/getCSV.php?name=table24hr");
+                link.click();
+        }
+    </script>
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" 
+              data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a href="."><img width="60%" src="./img/WATRlogo.png"/></a>
+          </div>
+          <div id="navbar" class="navbar-collapse collapse">                                          
+          <ul class="nav navbar-nav navbar-right">                                                  
+            <li><a href=".">Live Graphs</a></li>
+            <li><a href="rawdata.html">Raw Data</a></li>
+            <li><a href="about.html">About Data</a></li>
+          </ul>         
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-3 col-md-2 sidebar">
+          <ul class="nav nav-sidebar">
+            <li><a href=".">Live Graphs</a></li>
+            <li class="active"><a href="rawdata.html">Raw Data<span class="sr-only">(current)</span>
+            </a></li>
+            <li><a href="about.html">About Data</a></li>
+          </ul>
+        </div>
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+          <h1 class="page-header">Raw Data</h1>
+          <p>
+              <h4>
+              Here you can view all of the raw data collected from the WATR sensors in real 
+              This is the exact data used to create the <a href=".">live graphs</a>, 
+              ordered by newest data first.
+              </h4>
+          </p>
+          <table>
+              <tr>
+                <td><h2 class="sub-header">24-hour Data</h2></td>
+                <td>&nbsp</td>
+                <td><button id="24hrBtn" type="button" class="btn btn-sm btn-success">Download 24hr Data</button></td>
+            </tr>
+          </table>
+          <div id="CSVTable"> 
+          </div>
+          <table>
+              <tr>
+                <td><h2 class="sub-header">15-minute Data</h2></td>
+                <td>&nbsp </td>
+                <td><button id="15minBtn" type="button" class="btn btn-sm btn-success">Download 15min Data</button></td>
+            </tr>
+          </table>
+          <div id="CSVTable2">
+          </div>
+            <center>   
+            <h4><b>PROVISIONAL DATA</B> Subject to revision. Trial period -- data may be halted for 
+                corrections to system.</h4>
+        </center>   
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="js/bootstrap.min.js"></script>
+    <!-- Just to make our placeholder images work. Don't actually copy the next line! -->
+    <script src="./assets/js/vendor/holder.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="./assets/js/ie10-viewport-bug-workaround.js"></script>
+  </body>
+</html>
+
