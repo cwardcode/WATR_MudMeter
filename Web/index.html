@@ -165,8 +165,18 @@
                 data = rawData.replace(/&#xd;/g, "");       
                 //Get timeseries points for data 
                 timeseries = getCSVData(data,"Datetime"); 
-                //Get turbidity 15min data
-                turbNTU = getCSVData(data,"TurbNTU_Med");
+                //Get turbidity 15min data for TurbNTU
+                turbNTU_Data = getCSVData(data,"TurbNTU_Med");
+                //Get turbidity 15min data for TurbNTU
+                turbNTU2_Data = getCSVData(data,"TurbNTU2_Med");
+                //Create and populate NTU threshold values
+                var goodNTUValue = [];
+                var medNTUValue  = [];
+                var badNTUValue  = [];
+                var uglyNTUValue = [];
+
+                //Explicitly declare as array
+                turbNTU_24 = []; 
                 //Get turbidity 24hr data
                 turbNTU_24Data = getCSVData(data24Hr,"TurbNTU_Med");
                 //Get most recent 24 hour sample from turbNTU sensor
@@ -175,29 +185,24 @@
                 turbNTU2_24_sample = getCSVData(data24Hr,"TurbNTU2_Med")[turbNTU_24Data.length-1];
                 //Calculate median average
                 turbNTU_24Avg = (parseFloat(turbNTU_24_sample) + parseFloat(turbNTU2_24_sample))/2.0;
-
-                turbNTU_24 = []; 
                 //Get data for Temperature Chart
                 temp15min = getCSVData(data,"AquiTemp_Med");
-                //temp24hr = getCSVData(data24Hr,"AquiTemp_Med");
+
                 //Get data for Water Level Chart
                 level15min = getCSVData(data,"DepthFT_Med");
-                //level24hr = getCSVData(data24Hr,"DepthFT_Avg");
 
+                //Hold turbidity data  to print
+                //TODO switch back to data-average after sensors are looked at
+                var turbNTU = turbNTU_Data;;
+                //var turbNTU = [];
+                //
                 /**
                  * Since any data with only one entry will be plotted only one time, we need
                  * to expand these data points across our entire chart. This loop does that.
                  */
-                for(var j = 0; j < turbNTU.length; j++) {
+                for(var i = 0; i < turbNTU_Data.length; i++) {
                     turbNTU_24.push(turbNTU_24Avg);
-                }
-                //Create and populate NTU threshold values
-                var goodNTUValue = [];
-                var medNTUValue  = [];
-                var badNTUValue  = [];
-                var uglyNTUValue = [];
-
-                for(var j = 0; j < turbNTU.length; j++) {
+             //TODO turbNTU[i] = ((parseFloat(turbNTU_Data[i]) + parseFloat(turbNTU2_Data[i]))/2.0);
                     goodNTUValue.push(10);
                     medNTUValue.push(50);
                     badNTUValue.push(100);
@@ -231,6 +236,7 @@
                     },
                     name:'Upper limit (50NTU) for healthy streams in NC'
                 };
+
                 //Set up TurbNTU turbidity trace for plot
                 var badNTU = {
                     x: timeseries,
@@ -244,6 +250,7 @@
                     },
                     name:'Intake water > 100 NTUdifficult to treat'
                 };
+
                 //Set up TurbNTU turbidity trace for plot
                 var uglyNTU = {
                     x: timeseries,
@@ -257,6 +264,7 @@
                     },
                     name:'Intake water  > 150 NTU cannot be treated'
                 };
+
                 //Set up TurbNTU turbidity trace for plot
                 var turbNTUTrace = {
                     x: timeseries,
@@ -264,33 +272,16 @@
                     type: 'scatter',
                     name:'Turb 15min Med'
                 };
-                //Set up TurbNTU2 turbidity trace for plot
-                /**
-                 var turbNTU2Trace = {
-                    x: timeseries,
-                    y: turbNTU2,
-                    type: 'scatter',
-                    name: 'TurbNTU2 Sensor 15min Med'
-                };
-                */
+
                 //Set up TurbNTU2 turbidity trace for plot
                 var turbNTUTrace24 = {
                     x: timeseries,
                     y: turbNTU_24,
                     type: 'scatter',
-                    name: 'Turb 24hr-avg Med'
+                    name: 'Turb 24hr Med'
  
                 };
-                //Set up TurbNTU2 turbidity trace for plot
-                /*
-                var turbNTU2Trace24 = {
-                    x: timeseries,
-                    y: turbNTU2_24,
-                    type: 'scatter',
-                    name: 'TurbNTU2 Sensor 24hr Med'
-                };
 
-                */
                 //Set up Temperature 15min  trace for plot
                 var temp15MinTrace = {
                     x: timeseries,
@@ -299,17 +290,15 @@
                     name: 'Temp. 15min Median'
                 };
 
-                /**
-                //Set up Temperature 15min  trace for plot
-                var temp24hrTrace = {
+                //Set up Water Level 15min trace to show on turbidity plot
+                var level15MinTurbTrace = {
                     x: timeseries,
-                    y: temp24hr,
+                    y: level15min,
+                    yaxis: 'y2',
                     type: 'scatter',
-                    name: 'Temp. 24hr Median'
+                    name: 'Level 15min Med'
                 };
-
-                */
-                //Set up Temperature 15min  trace for plot
+                //Set up Water Level 15min trace for plot
                 var level15MinTrace = {
                     x: timeseries,
                     y: level15min,
@@ -317,17 +306,7 @@
                     name: 'Level 15min Median'
                 };
 
-                /*
-                //Set up Temperature 15min  trace for plot
-                var level24hrTrace = {
-                    x: timeseries,
-                    y: level24hr,
-                    type: 'scatter',
-                    name: 'Level 24hr Median'
-                };
-
-                */
-                //Set up layout for chart
+                //Set up layout for turbidity plot
                 var layout = {
                   title:'\"Muddyness\" \(Turbidity\) in Scotts Creek',
                   xaxis: {
@@ -336,13 +315,20 @@
                   yaxis: {
                       range: [0, 160],
                       title: 'Turbidity (NTU)'
+                  },
+                  yaxis2: {
+                      overlaying: 'y',
+                      side: 'right',
+                      anchor: 'x',
+                      range: [1, 5],
+                      title: 'Water Depth (ft)'
                   }
                 };
 
                 //Set up plot's traces
-                var plotTurbData = [goodNTU, medNTU, badNTU, uglyNTU, turbNTUTrace,turbNTUTrace24];//, turbNTU2Trace, turbNTU2Trace24];
-                var plotTempData = [temp15MinTrace];//, temp24hrTrace];
-                var plotLevelData = [level15MinTrace];//, level24hrTrace];
+                var plotTurbData = [goodNTU, medNTU, badNTU, uglyNTU, turbNTUTrace,turbNTUTrace24,level15MinTurbTrace];
+                var plotTempData = [temp15MinTrace];
+                var plotLevelData = [level15MinTrace];
 
                 //Create plot and set div for it to load into
                 Plotly.newPlot('turbDiv', plotTurbData, layout);
