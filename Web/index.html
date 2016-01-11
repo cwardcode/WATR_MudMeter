@@ -28,7 +28,11 @@
 
     <script>
     //Reloads page if orientation changes 
-    window.onorientationchange = function() { location.reload() };
+    window.addEventListener('orientationchange', function () {
+        location.reload();
+    });
+    </script>
+    <script>
     //Holds div in which turbidity is displayed
     var turbDiv = document.getElementById("turbDiv");
     //Holds raw data from 15Minute tables
@@ -296,7 +300,7 @@
                     y: level15min,
                     yaxis: 'y2',
                     type: 'scatter',
-                    name: 'Level 15min Med'
+                    name: 'Water Depth'
                 };
                 //Set up Water Level 15min trace for plot
                 var level15MinTrace = {
@@ -439,7 +443,10 @@
     <!-- Bootstrap core JavaScript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <script src="js/bootstrap.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <!-- jQuery mobile for screeenorientation change listener -->
+    <!-- bootstrap -->
+    <script src="./js/bootstrap.min.js"></script>
     <!-- Just to make our placeholder images work. Don't actually copy the next line! -->
     <script src="./assets/js/vendor/holder.min.js"></script>
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
