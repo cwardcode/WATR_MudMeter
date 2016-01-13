@@ -112,7 +112,7 @@
         var lines = [];
         //We're only plotting the last day's worth of data. The plot updates every 15 minutes, so
         //we only need the last 96 entries from the file.
-        var FftnMinIntervalsPerDay = 96; 
+        var FftnMinIntervalsPerDay = 97; 
         //Find line to  start on
         var startLine = dataLines.length - FftnMinIntervalsPerDay;
         //Check to see if number is negative, if so, only use amount of lines we have.
@@ -128,7 +128,7 @@
                 var dataString = "";
                 for (var j = 0; j<headers.length; j++) {
                     // Check to see if we are in requested header
-                    if(headers[j] == dataColm && dataColm == "Datetime") {
+                    if(headers[j] == dataColm && dataColm == "Date") {
                         //Remove date from datetime field, build string
                         dataString += fullData[j].substring(DATEFMT, fullData[j].length - SECFMT) 
                                                                                               + " ";
@@ -157,18 +157,18 @@
      */
     function getData(){                                                             
         //Get 24hr data
-        jQuery.get('/data/Table24hr.csv', function(res) {
+        jQuery.get('getCSV.php?name=table24hr&num=1', function(res) {
             rawData = JSON.parse(JSON.stringify(res, null, 2));
             data24Hr = rawData.replace(/&#xd;/g, "");       
         });
         //Get 15 min data
-        jQuery.get('/data/Table15min.csv', function(res) {
+        jQuery.get('getCSV.php?name=table15min&num=96', function(res) {
                 //Parse JSON, remove carriage return values 
                 rawData = JSON.parse(JSON.stringify(res, null, 2));
                 //Sanitize data, remove formatting
                 data = rawData.replace(/&#xd;/g, "");       
                 //Get timeseries points for data 
-                timeseries = getCSVData(data,"Datetime"); 
+                timeseries = getCSVData(data,"Date"); 
                 //Get turbidity 15min data for TurbNTU
                 turbNTU_Data = getCSVData(data,"TurbNTU_Med");
                 //Get turbidity 15min data for TurbNTU
