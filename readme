@@ -1,17 +1,19 @@
-# CampbellDataStreaming
+# WATR_MudMeter             
 ## Description
 - A system allowing data collection from a Campbell scientific datalogger using
   a Raspebrry Pi and Python.
   
   As a requirement of the client, the program needs to provide real-time data 
   streaming. This originally meant the chart was to be updated as frequently 
-  as possible. The python script allows data to be displayed online within 
-  seconds of being collected.
+  as possible.   
 
   However, due to the client's data restrictions, it was decided to, instead of
   live-streaming the data, to upload/refresh the data every hour instead. With this 
   decision, the streaming charts were re-implemented as a static html file, 
   building the charts from the uploaded data.
+
+  The original, live-streaming project can still be found under my CampbellDataStreaming
+  repository.
 
 ## Requirements:
 - A computer running Debian Jessie (I'm using a Raspberry Pi)
@@ -21,16 +23,21 @@
 ## Repository Layout:
    _____________________________________________________________________________________
    | -DataCollection <- Forked from CampbellDataCollection repository                  | 
-   | -Streaming      <- Contains live data streaming code                              |
-   | |-Data          <- Holds sample data for testing code                             |        
-   | |-cached_streamPlot.py <- First implementation - collect data from logger, parse  |
-   | |                          data, and plot it. Not efficient, and suffers from     |
-   | |                          producer-consumer problem.                             |
-   | |-streamHTML.html      <- Uses uploaded data from Raspberry Pi to render charts   |
-   | |                          upon page load. * version currently in production. *   |
-   | |-streamPlot.py        <- Live-streaming implementation, updates plotly charts    |
-   | |                         every 15 seconds. Also blocks chart updates every 15    |
-   | |                         minutes to upload newly collected data to server.       |
-   | |                         * Most efficient, but most data-intensive. *            |
-   | |-streamPlot_dev.py    <- Development version of streamPlot.py                    |      
+   | |-DataCollection.py    <- Final implementation - collect data from logger, parse  |
+   | |                          data, and uploads to server for later analysis and     |
+   | |                          visualization.                                         |
+   | -Web                   <- Holds the user-facing website                           |
+   | |-assets               <- Holds bootstrap assets and files used by website.       |
+   | |-css                  <- Holds website's css files.                              |
+   | |-fonts                <- Holds fonts used by website.                            |
+   | |-img                  <- Holds images used by website.                           |
+   | |-js                   <- Holds javascript files used by website.                 |
+   | |-about.html           <- Displays general information about the site to the user.|
+   | |-getCSV.php           <- Generates a CSV file from the database based upon       |
+   | |                         arguments provided. Can select table, order, and        |
+   | |                         max number of rows.                                     |
+   | |-getJSON.php          <- Similar to getCSV, but returns JSON representation      |
+   | |                         rather than CSV.                                        |
+   | |-index.html           <- Website entry point, displays data plots to user.       |
+   | |-rawdata.html         <- Displays the raw data to a user, via the getCSV script. |
    |___________________________________________________________________________________|
