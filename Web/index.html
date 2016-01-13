@@ -33,6 +33,7 @@
     });
     </script>
     <script>
+    "use strict";
     //Holds div in which turbidity is displayed
     var turbDiv = document.getElementById("turbDiv");
     //Holds raw data from 15Minute tables
@@ -166,13 +167,13 @@
                 //Parse JSON, remove carriage return values 
                 rawData = JSON.parse(JSON.stringify(res, null, 2));
                 //Sanitize data, remove formatting
-                data = rawData.replace(/&#xd;/g, "");       
+                var data = rawData.replace(/&#xd;/g, "");       
                 //Get timeseries points for data 
-                timeseries = getCSVData(data,"Date"); 
+                var timeseries = getCSVData(data,"Date"); 
                 //Get turbidity 15min data for TurbNTU
-                turbNTU_Data = getCSVData(data,"TurbNTU_Med");
+                var turbNTU_Data = getCSVData(data,"TurbNTU_Med");
                 //Get turbidity 15min data for TurbNTU
-                turbNTU2_Data = getCSVData(data,"TurbNTU2_Med");
+                var turbNTU2_Data = getCSVData(data,"TurbNTU2_Med");
                 //Create and populate NTU threshold values
                 var goodNTUValue = [];
                 var medNTUValue  = [];
@@ -180,20 +181,20 @@
                 var uglyNTUValue = [];
 
                 //Explicitly declare as array
-                turbNTU_24 = []; 
+                var turbNTU_24 = []; 
                 //Get turbidity 24hr data
-                turbNTU_24Data = getCSVData(data24Hr,"TurbNTU_Med");
+                var turbNTU_24Data = getCSVData(data24Hr,"TurbNTU_Med");
                 //Get most recent 24 hour sample from turbNTU sensor
-                turbNTU_24_sample = turbNTU_24Data[turbNTU_24Data.length-1];
+                var turbNTU_24_sample = turbNTU_24Data[turbNTU_24Data.length-1];
                 //Get most recent 24 hour sample from turbNTU sensor
-                turbNTU2_24_sample = getCSVData(data24Hr,"TurbNTU2_Med")[turbNTU_24Data.length-1];
+                var turbNTU2_24_sample = getCSVData(data24Hr,"TurbNTU2_Med")[turbNTU_24Data.length-1];
                 //Calculate median average
-                turbNTU_24Avg = (parseFloat(turbNTU_24_sample) + parseFloat(turbNTU2_24_sample))/2.0;
+                var turbNTU_24Avg = (parseFloat(turbNTU_24_sample) + parseFloat(turbNTU2_24_sample))/2.0;
                 //Get data for Temperature Chart
-                temp15min = getCSVData(data,"AquiTemp_Med");
+                var temp15min = getCSVData(data,"AquiTemp_Med");
 
                 //Get data for Water Level Chart
-                level15min = getCSVData(data,"DepthFT_Med");
+                var level15min = getCSVData(data,"DepthFT_Med");
 
                 //Hold turbidity data  to print
                 //TODO switch back to data-average after sensors are looked at
