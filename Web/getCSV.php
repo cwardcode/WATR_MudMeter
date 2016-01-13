@@ -4,10 +4,14 @@ include "config.php";
 //Get name of table passed in
 $table= $_GET['name'];
 
-//Make sure table name is provided
+//Make sure table name is provided, then check if an allowed table was entered. Unfortunately,
+//PDO does not allow prepared statements with column or table names...
 if(!isset($table)) {
     echo("Invalid arguments provided");
     exit(1);
+} else if (strcmp($table,"table15min") && strcmp($table, table24hr)) {
+    echo("Invalid arguments provided");
+    exit(2);
 }
 
 //Get sorting order for database
