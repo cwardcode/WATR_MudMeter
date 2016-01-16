@@ -17,6 +17,9 @@ if(!isset($table)) {
 //Get sorting order for database
 $order= $_GET['order'];
 
+//Get number of rows to return
+$nbrRow = $_GET['num'];
+
 //Try connecting to database
 $connection= new PDO('mysql:host='.$conHost.';dbname='.$database.';charset=utf8',$conUser,$conPass);
 if(!$connection){
@@ -26,8 +29,10 @@ if(!$connection){
 //Set the query to perform on the database. If order is present, use as specified.
 if(isset($order)) {
     $query="Select * from " . $table . " order by RecNbr " . $order;
+} elseif (isset($nbrRow)) {
+    $query="select * from (select * from " .$table . " order by RecNbr desc limit " .$nbrRow .") as test order by RecNbr asc;";
 } else {
-    $query="Select * from " . $table;
+    $query="select * from " . $table;
 }
 //Try performing query
 $result=$connection->query($query) or die('Invalid query!');
