@@ -17,8 +17,11 @@ if(!isset($table)) {
 //Get sorting order for database
 $order= $_GET['order'];
 
-//Get number of rows to return
-$nbrRow = $_GET['num'];
+//Get first date to select data
+$oldDate = $_GET['oldDate'];
+
+//Get first date to select data
+$curDate = $_GET['curDate'];
 
 //Try connecting to database
 $connection= new PDO('mysql:host='.$conHost.';dbname='.$database.';charset=utf8',$conUser,$conPass);
@@ -29,8 +32,8 @@ if(!$connection){
 //Set the query to perform on the database. If order is present, use as specified.
 if(isset($order)) {
     $query="Select * from " . $table . " order by RecNbr " . $order;
-} elseif (isset($nbrRow)) {
-    $query="select * from (select * from " .$table . " order by RecNbr desc limit " .$nbrRow .") as test order by RecNbr asc;";
+} elseif (isset($oldDate) && isset($curDate)) {
+    $query="select * from " .$table . " where Date between " .$oldDate . " and " .$curDate;
 } else {
     $query="select * from " . $table;
 }

@@ -33,18 +33,33 @@
 
 <script>
 "use strict";
+Date.prototype.yyyymmdd = function() {
+   var yyyy = this.getFullYear().toString();
+   var mm = (this.getMonth()+1).toString(); // getMonth() is zero-based
+   var dd  = this.getDate().toString();
+   return String(yyyy + "-" + (mm[1]?mm:"0"+mm[0]) + "-" +(dd[1]?dd:"0"+dd[0])); // padding
+};
+
 //Setup graph update button click
 $(document).ready(function() {
-    //Build graphs
-    var days = "1";
-    getData(days);
+    //Get initial dates
+    var today = moment().format("YYYY-MM-DD HH:MM:SS");
+    var yesterday = moment().add(-1, "days").format("YYYY-MM-DD");
+    //Plot initial graph
+    getData(yesterday, today);
+    //Create date pickers
     $('#datetimepicker1').datetimepicker();
     $("#datetimepicker1").data("date")
+    $('#datetimepicker2').datetimepicker();
+    $("#datetimepicker2").data("date")
+    //Click function, gets date, and formats it for query
     $("#dateSub").click(function(){
-        var _date = $("#datetimepicker1").data("date");
-        if(_date != undefined) {
-            days = days_between(new Date(_date), new Date());
-            getData(days);
+        var _date1 = $("#datetimepicker1").data("date").split(" ")[0].replace(/\//g,"-");
+        var _date2 = $("#datetimepicker2").data("date").split(" ")[0].replace(/\//g,"-");
+        console.log("Date 1: " + _date1 + ", Date 2: " + _date2);
+        if(_date1 != undefined && _date2 != undefined) {
+           getData(_date1.slice(6) + "-" + _date1.substring(0, _date1.length - 5), _date2.slice(6) 
+                                                    + "-" + _date2.substring(0, _date2.length - 5));
         } 
     });
 });
@@ -104,26 +119,6 @@ function download24Data() {
     link.setAttribute("href", encodeData);
     link.setAttribute("download", "data24hr.csv");
     link.click();
-}
-
-/**
- * Returns number of days between two dates
- *
- * @param date1 The first date
- * @param date2 The last date
- *
- * @return days between two dates
- */
-function days_between(date1, date2) {
-    // The number of milliseconds in one day
-    var ONE_DAY = 1000 * 60 * 60 * 24
-    // Convert both dates to milliseconds
-    var date1_ms = date1.getTime()
-    var date2_ms = date2.getTime()
-    // Calculate the difference in milliseconds
-    var difference_ms = Math.abs(date1_ms - date2_ms)
-    // Convert back to days and return
-    return Math.round(difference_ms/ONE_DAY)
 }
 
 /**
@@ -205,17 +200,23 @@ function getCSVData(data, dataColm) {
  * Function to get data from HydroVu website, sanitize it, and add it to a
  * Plotly plot.
  */
-function getData(daysData){                                                             
-    //Hold days of data to retrieve
-    var days = parseInt(daysData);// + parseInt(1); 
-    var points = parseInt(days * 96);
+var p = "";
+var c = "";
+function getData(prevDate,recDate){                                                             
+    //Hold previous date
+    var prev = prevDate + "%";
+    p = prev;
+    //Hold most current date
+    var cur = recDate + "%";
+    c = cur;
+    console.log("sending prev: " + String((p + 0)) + " cur: " + String((c + 0)));
     //get 24hr data
-    jQuery.get('getCSV.php?name=table24hr&num=' + days, function(res) {
+    jQuery.get('getCSV.php?name=table24hr&oldDate=\"' + p +'\"&curDate=\"' + c + '\"', function(res) {
             rawData = JSON.parse(JSON.stringify(res, null, 2));
             data24Hr = rawData.replace(/&#xd;/g, "");       
             });
     //Get 15 min data
-    jQuery.get('getCSV.php?name=table15min&num=' + points, function(res) {
+    jQuery.get('getCSV.php?name=table15min&oldDate=\"' + p +'\"&curDate=\"' + c + '\"', function(res) {
             //Parse JSON, remove carriage return values 
             rawData = JSON.parse(JSON.stringify(res, null, 2));
             //Sanitize data, remove formatting
@@ -249,7 +250,6 @@ function getData(daysData){
             var level15min = getCSVData(data,"DepthFT_Med");
 
             //Hold turbidity data  to print
-            //TODO switch back to data-average after sensors are looked at
             var turbNTU = turbNTU_Data;
             //Hold largeset turbidity value
             var maxTurb = 0.0;
@@ -268,8 +268,8 @@ function getData(daysData){
              * to expand these data points across our entire chart. This loop does that.
              */
             for(var i = 0; i < turbNTU_Data.length; i++) {
+                turbNTU[i] = ((parseFloat(turbNTU_Data[i]) + parseFloat(turbNTU2_Data[i]))/2.0);
                 turbNTU_24.push(turbNTU_24Avg);
-                //TODO turbNTU[i] = ((parseFloat(turbNTU_Data[i]) + parseFloat(turbNTU2_Data[i]))/2.0);
                 goodNTUValue.push(10);
                 medNTUValue.push(50);
                 badNTUValue.push(100);
@@ -391,7 +391,6 @@ function getData(daysData){
                     side: 'right',
                     anchor: 'x',
                 //  range: [1, 5],
-                    title: 'Water Depth (ft)'
                 }
             };
 
@@ -477,13 +476,10 @@ function getData(daysData){
                 <li><a href="rawdata.html">Raw Data</a></li>
                 <li><a href="about.html">About Data</a></li>
             </ul>
-        </div>
-        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-            <h1 class="page-header"><center>Live data from WATR Sensors</center></h1>
             <div id="dateDiv" style="align: left; margin:0px auto;">
             <h4>You can adjust data viewed by selecting a start date:</h4>
                 <div class="row">
-                    <div class='col-sm-3'>
+                    <div class='col-sm-12'>
                         <div class="form-group">
                             <div class='input-group date' id='datetimepicker1'>
                                 <input type='text' class="form-control" />
@@ -493,9 +489,25 @@ function getData(daysData){
                             </div>
                         </div>
                     </div>
-                    <button id="dateSub" class="btn btn-sm btn-success">Go</button>
+                </div>
+            <h4>You can adjust data viewed by selecting an end date:</h4>
+                <div class="row">
+                    <div class='col-sm-12'>
+                        <div class="form-group">
+                            <div class='input-group date' id='datetimepicker2'>
+                                <input type='text' class="form-control" />
+                                <span class="input-group-addon">
+                                    <span class="glyphicon glyphicon-calendar"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <center><button id="dateSub" class="btn btn-sm btn-success">Search</button></center>
                 </div>
             </div>
+        </div>
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+            <h1 class="page-header"><center>Live data from WATR Sensors</center></h1>
             <div id="turbDiv"></div>
             <br>
             <div id="meterInformation" style="width:100%;">
