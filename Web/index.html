@@ -33,6 +33,8 @@
 
 <script>
 "use strict";
+
+//Add prototype function that reverses the date formatting of a Date object.
 Date.prototype.yyyymmdd = function() {
    var yyyy = this.getFullYear().toString();
    var mm = (this.getMonth()+1).toString(); // getMonth() is zero-based
@@ -56,7 +58,6 @@ $(document).ready(function() {
     $("#dateSub").click(function(){
         var _date1 = $("#datetimepicker1").data("date").split(" ")[0].replace(/\//g,"-");
         var _date2 = $("#datetimepicker2").data("date").split(" ")[0].replace(/\//g,"-");
-        console.log("Date 1: " + _date1 + ", Date 2: " + _date2);
         if(_date1 != undefined && _date2 != undefined) {
            getData(_date1.slice(6) + "-" + _date1.substring(0, _date1.length - 5), _date2.slice(6) 
                                                     + "-" + _date2.substring(0, _date2.length - 5));
@@ -209,12 +210,16 @@ function getData(prevDate,recDate){
     //Hold most current date
     var cur = recDate + "%";
     c = cur;
-    console.log("sending prev: " + String((p + 0)) + " cur: " + String((c + 0)));
     //get 24hr data
     jQuery.get('getCSV.php?name=table24hr&oldDate=\"' + p +'\"&curDate=\"' + c + '\"', function(res) {
-            rawData = JSON.parse(JSON.stringify(res, null, 2));
-            data24Hr = rawData.replace(/&#xd;/g, "");       
-            });
+        rawData = JSON.parse(JSON.stringify(res, null, 2));
+        data24Hr = rawData.replace(/&#xd;/g, "");       
+        //24 hour table header is 100 characters, so if length is less than 110, something went wrong
+        //so we reload the page.
+        if(data24Hr.length < 110) {
+            location.reload();
+        }
+     });
     //Get 15 min data
     jQuery.get('getCSV.php?name=table15min&oldDate=\"' + p +'\"&curDate=\"' + c + '\"', function(res) {
             //Parse JSON, remove carriage return values 
@@ -379,7 +384,7 @@ function getData(prevDate,recDate){
                 xaxis: {
                     title: 'Time',
                     tickangle: 0,
-                    tickformat:"%a %I:%M %p"
+                    tickformat:"%m/%e %I:%M %p"
                 },
 
                 yaxis: {
@@ -477,12 +482,12 @@ function getData(prevDate,recDate){
                 <li><a href="about.html">About Data</a></li>
             </ul>
             <div id="dateDiv" style="align: left; margin:0px auto;">
-            <h4>You can adjust data viewed by selecting a start date:</h4>
+            <h4>You can adjust data viewed by selecting start and end dates below:</h4>
                 <div class="row">
                     <div class='col-sm-12'>
                         <div class="form-group">
                             <div class='input-group date' id='datetimepicker1'>
-                                <input type='text' class="form-control" />
+                                <input type='text' class="form-control" placeholder="Start Date" />
                                 <span class="input-group-addon">
                                     <span class="glyphicon glyphicon-calendar"></span>
                                 </span>
@@ -490,12 +495,11 @@ function getData(prevDate,recDate){
                         </div>
                     </div>
                 </div>
-            <h4>You can adjust data viewed by selecting an end date:</h4>
                 <div class="row">
                     <div class='col-sm-12'>
                         <div class="form-group">
                             <div class='input-group date' id='datetimepicker2'>
-                                <input type='text' class="form-control" />
+                                <input type='text' class="form-control" placeholder="End Date"/>
                                 <span class="input-group-addon">
                                     <span class="glyphicon glyphicon-calendar"></span>
                                 </span>
@@ -552,7 +556,6 @@ function getData(prevDate,recDate){
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
     <script src="./assets/js/ie10-viewport-bug-workaround.js"></script>
     <!-- Google Analytics -->
-<!--   
     <script>
       (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
       (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
@@ -563,7 +566,6 @@ function getData(prevDate,recDate){
       ga('send', 'pageview');
 
     </script>
---> 
   </body>
 </html>
 
