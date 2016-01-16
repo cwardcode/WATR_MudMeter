@@ -37,7 +37,7 @@
 //Setup graph update button click
 $(document).ready(function() {
     //Get initial dates
-    var today = moment().format("YYYY-MM-DD HH:MM:SS");
+    var today = moment().format("YYYY-MM-DD HH:mm");
     var yesterday = moment().add(-1, "days").format("YYYY-MM-DD");
     //Plot initial graph
     getData(yesterday, today,"on");
@@ -69,7 +69,7 @@ $(document).ready(function() {
     });
 });
 
-//Reloads page if orientation changes 
+//Reloads page if orientation changes on mobile 
 window.addEventListener('orientationchange', function () {
     location.reload();
 });
@@ -139,6 +139,9 @@ function getCSVData(data, dataColm,max) {
     //Constant to hold number of points to plot per day.
         var MAXPOINTS    = 385;
     }    
+    if(data == undefined) {
+        location.reload();
+    }
     //Remove formatting
     var dataLines = data.split(/\r\n|\n/);
     //Store file headers
@@ -191,22 +194,20 @@ function getCSVData(data, dataColm,max) {
 
     //Return only entries from past day
     if(max == "on") {
-        return lines.slice(lines.length - MAXPOINTS, lines.length - 1) 
-    } else {
-        return lines;
+        lines = lines.slice(lines.length - MAXPOINTS, lines.length - 1) 
     }
+   
+    return lines;
 } 
 
 /**
  * Function to get data from HydroVu website, sanitize it, and add it to a
  * Plotly plot.
  */
-var maxTurb = 0;
-var turbNTU = [];
-var testNTU = [];
-var p = "";
-var c = "";
 function getData(prevDate,recDate){                                                             
+    //Explicitly declare as strings
+    var p = "";
+    var c = "";
     //Hold previous date
     p = prevDate + "%";
     //Hold most current date
@@ -231,7 +232,6 @@ function getData(prevDate,recDate){
             var timeseries = getCSVData(data,"Date"); 
             //Get turbidity 15min data for TurbNTU
             var turbNTU_Data = getCSVData(data,"TurbNTU_Med");
-            testNTU = turbNTU_Data;     
             //Get turbidity 15min data for TurbNTU
             var turbNTU2_Data = getCSVData(data,"TurbNTU2_Med");
             //Create and populate NTU threshold values
@@ -257,15 +257,15 @@ function getData(prevDate,recDate){
             var level15min = getCSVData(data,"DepthFT_Med");
 
             //Hold turbidity data  to print
-            turbNTU = turbNTU_Data;
+            var turbNTU = turbNTU_Data;
             //Hold largeset turbidity value
-            maxTurb = parseInt(Math.max.apply(null,turbNTU));
+            var maxTurb = parseInt(Math.max.apply(null,turbNTU));
             /**
              * Since any data with only one entry will be plotted only one time, we need
              * to expand these data points across our entire chart. This loop does that.
              */
             for(var i = 0; i < turbNTU_Data.length; i++) {
-                turbNTU[i] = ((parseFloat(turbNTU_Data[i]) + parseFloat(turbNTU2_Data[i]))/2.0);
+                turbNTU[i] = ((parseInt(turbNTU_Data[i]) + parseInt(turbNTU2_Data[i]))/2.0);
                 turbNTU_24.push(turbNTU_24Avg);
                 goodNTUValue.push(10);
                 medNTUValue.push(50);
@@ -328,7 +328,6 @@ function getData(prevDate,recDate){
                    },
                 name:'Intake water  > 150 NTU cannot be treated'
             };
-
             //Set up TurbNTU turbidity trace for plot
             var turbNTUTrace = {
                 x: timeseries,
