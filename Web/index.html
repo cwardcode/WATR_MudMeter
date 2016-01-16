@@ -34,21 +34,13 @@
 <script>
 "use strict";
 
-//Add prototype function that reverses the date formatting of a Date object.
-Date.prototype.yyyymmdd = function() {
-   var yyyy = this.getFullYear().toString();
-   var mm = (this.getMonth()+1).toString(); // getMonth() is zero-based
-   var dd  = this.getDate().toString();
-   return String(yyyy + "-" + (mm[1]?mm:"0"+mm[0]) + "-" +(dd[1]?dd:"0"+dd[0])); // padding
-};
-
 //Setup graph update button click
 $(document).ready(function() {
     //Get initial dates
     var today = moment().format("YYYY-MM-DD HH:MM:SS");
     var yesterday = moment().add(-1, "days").format("YYYY-MM-DD");
     //Plot initial graph
-    getData(yesterday, today);
+    getData(yesterday, today,"on");
     //Create date pickers
     $('#datetimepicker1').datetimepicker();
     $("#datetimepicker1").data("date")
@@ -56,11 +48,23 @@ $(document).ready(function() {
     $("#datetimepicker2").data("date")
     //Click function, gets date, and formats it for query
     $("#dateSub").click(function(){
+        //Get dates/format for query
         var _date1 = $("#datetimepicker1").data("date").split(" ")[0].replace(/\//g,"-");
         var _date2 = $("#datetimepicker2").data("date").split(" ")[0].replace(/\//g,"-");
-        if(_date1 != undefined && _date2 != undefined) {
-           getData(_date1.slice(6) + "-" + _date1.substring(0, _date1.length - 5), _date2.slice(6) 
-                                                    + "-" + _date2.substring(0, _date2.length - 5));
+        //Validate user input
+        if($("#datetimepicker1").data("date") < $("#datetimepicker2").data("date")) {
+           //Clear out any old errors
+           $("#searchText").html(""); 
+            //Change format to be YYMMMDD
+            var firstDate = _date1.slice(6) + "-" + _date1.substring(0, _date1.length - 5);
+            var secndDate = _date2.slice(6) + "-" + _date2.substring(0, _date2.length - 5);
+            if(_date1 != undefined && _date2 != undefined) {
+              //Get data/reload graph 
+               getData(firstDate, secndDate);
+            }
+        } else {
+            //Show error to user
+            $("#searchText").html("Invalid date range, start should be before end."); 
         } 
     });
 });
@@ -130,19 +134,11 @@ function download24Data() {
  *
  * @return lines The data we requested 
  */
-function getCSVData(data, dataColm) {
+function getCSVData(data, dataColm,max) {
+    if(max == "on") {
     //Constant to hold number of points to plot per day.
-    var MAXPOINTS    = 385;        
-    //Constant to hold number of chars needed to remove MM/DD/YYYY: from datetime
-    var DATEFMT      = 11;
-    //Constant to hold number of chars needed to remove :SS from datetime
-    var SECFMT       = 3;
-    //Hold sum of values for data
-    var sumValue     = 0;
-    //Holds count of objects 
-    var countValue   = 0;
-    //Hold average value for data
-    var averageValue = 0;
+        var MAXPOINTS    = 385;
+    }    
     //Remove formatting
     var dataLines = data.split(/\r\n|\n/);
     //Store file headers
@@ -170,9 +166,10 @@ function getCSVData(data, dataColm) {
                 if(headers[j] == dataColm && dataColm == "TurbNTU_Med") {
                     //Truncate NTU values by converting float to integer
                     var ntu = parseInt(fullData[j]);
-                    if(ntu < 0) { ntu = 0; }
+                    if(ntu < 0 || isNaN(ntu)) { 
+                        ntu = 0; 
+                    } 
                     dataString += ntu;
-                    
                 } else if(headers[j] == dataColm && dataColm == "AquiTemp_Med") {
                     //Convert temperature in Celcius to Fahrenheit
                     dataString += ((fullData[j] * 1.8) + 32);
@@ -193,23 +190,27 @@ function getCSVData(data, dataColm) {
     }
 
     //Return only entries from past day
-    var dailyData = lines.slice(lines.length - MAXPOINTS, lines.length - 1) 
-        return dailyData;
+    if(max == "on") {
+        return lines.slice(lines.length - MAXPOINTS, lines.length - 1) 
+    } else {
+        return lines;
+    }
 } 
 
 /**
  * Function to get data from HydroVu website, sanitize it, and add it to a
  * Plotly plot.
  */
+var maxTurb = 0;
+var turbNTU = [];
+var testNTU = [];
 var p = "";
 var c = "";
 function getData(prevDate,recDate){                                                             
     //Hold previous date
-    var prev = prevDate + "%";
-    p = prev;
+    p = prevDate + "%";
     //Hold most current date
-    var cur = recDate + "%";
-    c = cur;
+    c = recDate + "%";
     //get 24hr data
     jQuery.get('getCSV.php?name=table24hr&oldDate=\"' + p +'\"&curDate=\"' + c + '\"', function(res) {
         rawData = JSON.parse(JSON.stringify(res, null, 2));
@@ -230,6 +231,7 @@ function getData(prevDate,recDate){
             var timeseries = getCSVData(data,"Date"); 
             //Get turbidity 15min data for TurbNTU
             var turbNTU_Data = getCSVData(data,"TurbNTU_Med");
+            testNTU = turbNTU_Data;     
             //Get turbidity 15min data for TurbNTU
             var turbNTU2_Data = getCSVData(data,"TurbNTU2_Med");
             //Create and populate NTU threshold values
@@ -255,19 +257,9 @@ function getData(prevDate,recDate){
             var level15min = getCSVData(data,"DepthFT_Med");
 
             //Hold turbidity data  to print
-            var turbNTU = turbNTU_Data;
+            turbNTU = turbNTU_Data;
             //Hold largeset turbidity value
-            var maxTurb = 0.0;
-            //Find largest number in turbidity list
-            for(var i = 0; i < turbNTU.length; i++) {
-                //Get current turb value, and convert to number.
-                var curTurb = parseFloat(turbNTU[i].replace(",",""));
-                if(curTurb > maxTurb) {
-                    maxTurb = curTurb;
-                }
-            }
-            //var turbNTU = [];
-            //
+            maxTurb = parseInt(Math.max.apply(null,turbNTU));
             /**
              * Since any data with only one entry will be plotted only one time, we need
              * to expand these data points across our entire chart. This loop does that.
@@ -483,32 +475,33 @@ function getData(prevDate,recDate){
             </ul>
             <div id="dateDiv" style="align: left; margin:0px auto;">
             <h4>You can adjust data viewed by selecting start and end dates below:</h4>
-                <div class="row">
-                    <div class='col-sm-12'>
-                        <div class="form-group">
-                            <div class='input-group date' id='datetimepicker1'>
-                                <input type='text' class="form-control" placeholder="Start Date" />
-                                <span class="input-group-addon">
-                                    <span class="glyphicon glyphicon-calendar"></span>
-                                </span>
-                            </div>
+            <div class="row">
+                <div class='col-sm-12'>
+                    <div class="form-group">
+                        <div class='input-group date' id='datetimepicker1'>
+                            <input type='text' class="form-control" placeholder="Start Date" />
+                            <span class="input-group-addon">
+                                <span class="glyphicon glyphicon-calendar"></span>
+                            </span>
                         </div>
                     </div>
-                </div>
-                <div class="row">
-                    <div class='col-sm-12'>
-                        <div class="form-group">
-                            <div class='input-group date' id='datetimepicker2'>
-                                <input type='text' class="form-control" placeholder="End Date"/>
-                                <span class="input-group-addon">
-                                    <span class="glyphicon glyphicon-calendar"></span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <center><button id="dateSub" class="btn btn-sm btn-success">Search</button></center>
                 </div>
             </div>
+            <div class="row">
+                <div class='col-sm-12'>
+                    <div class="form-group">
+                        <div class='input-group date' id='datetimepicker2'>
+                            <input type='text' class="form-control" placeholder="End Date"/>
+                            <span class="input-group-addon">
+                                <span class="glyphicon glyphicon-calendar"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <center><button id="dateSub" class="btn btn-sm btn-success">Search</button></center>
+                <center><div id="searchText" style="color:red;"></div></center>
+            </div>
+        </div>
         </div>
         <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
             <h1 class="page-header"><center>Live data from WATR Sensors</center></h1>
