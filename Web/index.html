@@ -266,7 +266,7 @@ function getData(prevDate,recDate){
              */
             for(var i = 0; i < turbNTU_Data.length; i++) {
                 turbNTU[i] = ((parseInt(turbNTU_Data[i]) + parseInt(turbNTU2_Data[i]))/2.0);
-                turbNTU_24.push(turbNTU_24Avg);
+                turbNTU_24.push(parseInt(turbNTU_24Avg));
                 goodNTUValue.push(10);
                 medNTUValue.push(50);
                 badNTUValue.push(100);
