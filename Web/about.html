@@ -30,8 +30,8 @@
         function mapInit() {
             var mapOptions = {
                 center: new google.maps.LatLng(35.374708,-83.225880),
-                zoom: 17,
-                mapTypeId: google.maps.MapTypeId.STREET,
+                zoom: 16,
+                mapTypeId: google.maps.MapTypeId.TERRAIN,
                 scrollwheel: false,
                 draggable: false,
                 panControl: true,
@@ -84,18 +84,43 @@
           </ul>
         </div>
         <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-          <h1 class="page-header">About the location</h1>
-            <p>The MudMeter's instruments are located along Scott Creek in downtown Sylva, North 
-            Carolina. The purpose of the meter is to bring awareness to the high turbidity within
-            the Tuckaseigee River's watershed. The more turbid the water, the muddier it looks!</p>
-        <div class="col-sm-6">
-            <h2 class="sub-header">Scott Creek</h2>
-            <p>Insert information here.</p>
-        </div>
-        <div class="col-sm-6">
-            <h2 class="sub-header">Map</h2>
-            <div style="width:100%;height:500px;" id="locationMap"></div> 
-        </div>
+          <h1 class="page-header">About the WATR and the MudMeter location</h1>
+            <h4>
+            <p>
+                WATR is a grassroots organization working to improve your water quality and habitat 
+                of the Tuckasegee River Basin. The Tuckasegee River watershed supplies the drinking 
+                water and ecosystem foundation for Swain and Jackson Counties. What happens upstream, 
+                downstream, and all around the watershed impacts all of us directly.
+            </p>
+            <p> 
+                The Tuckaseegee River Watershed drains a large area encompassing Jackson and Swain 
+                Counties in western North Carolina. Its headwaters start in Panthertown, a protected 
+                natural area and flows into Fontana Lake where it joins the Little Tennessee River 
+                Watershed.
+            </p>
+            <p> 
+                The MudMeter's instruments are located along Scott Creek, a tributary of the Tuckasegee
+                in downtown Sylva, North Carolina. The purpose of the meter is to bring awareness to 
+                the high turbidity within the Tuckasegee River's watershed. The more turbid the water, 
+                the muddier it looks!
+            </p>
+            <p>
+                All data on this site is updated once per hour, and presented in fifteen-minute 
+                intervals.
+            </p>
+            </h4>
+            <div class="col-sm-6">
+                <h2 class="sub-header">Scott Creek</h2>
+                <img src="img/mmeter.jpg" class="img-responsive" alt="MudMeter location"></img>
+            <h4>
+                <p>Flowing through downtown Sylva, Scott Creek is classified as a Mountain Heritage 
+                Trout Water and is a hatchery-supported trout water.</p>
+            </h4>
+            </div>
+            <div class="col-sm-6">
+                <h2 class="sub-header">Map</h2>
+                <div style="width:100%;height:500px;" id="locationMap"></div> 
+            </div>
       </div>
     </div>
 
