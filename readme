@@ -7,18 +7,23 @@
   streaming. This originally meant the chart was to be updated as frequently 
   as possible.   
 
-  However, due to the client's data restrictions, it was decided to, instead of
-  live-streaming the data, to upload/refresh the data every hour instead. With this 
+  However, due to the client's data restrictions, it was decided, instead of
+  live-streaming the data, to upload and refresh the data every hour instead. With this 
   decision, the streaming charts were re-implemented as a static html file, 
   building the charts from the uploaded data.
 
-  The original, live-streaming project can still be found under my CampbellDataStreaming
+  The original, live-streaming implementation can still be found under my CampbellDataStreaming
   repository.
 
 ## Requirements:
-- A computer running Debian Jessie (I'm using a Raspberry Pi)
+- A device capable of running Python
+- Python library Paramiko
+- Python library PyCampbellCR1000 (https://pycampbellcr1000.readthedocs.org/en/latest/)
 - Internet Connection (I'm using a Verizon Jetpack hotspot)
-- A serial port to connect to the Campbell, on a Raspberry Pi (I'm using a RS232 cape)
+- A serial port to connect to the Campbell logger
+---- A USB->RS232 converter may be substituted if drivers exist for the device.
+
+This project has been implemented using a Raspberry Pi v2
 
 ## Repository Layout:
    _____________________________________________________________________________________
