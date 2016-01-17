@@ -1,6 +1,9 @@
 <?php
 include "config.php";
-
+/**
+ * Author: Chris Ward <chris@cwardcode.com>
+ * Version: 1/16/2016
+ */
 //Get name of table passed in
 $table= $_GET['name'];
 
@@ -24,9 +27,13 @@ $oldDate = $_GET['oldDate'];
 $curDate = $_GET['curDate'];
 
 //Try connecting to database
-$connection= new PDO('mysql:host='.$conHost.';dbname='.$database.';charset=utf8',$conUser,$conPass);
-if(!$connection){
-    die('Not connected: ');
+try {
+    $connection= new PDO('mysql:host='.$conHost.';dbname='.$database.';charset=utf8',$conUser,$conPass);
+    if(!$connection){
+        die('Not connected: ');
+    }
+} catch(PDOException $pdex) {
+    echo "Error connecting to DB. " .$pdex->getMessage();
 }
 
 //Set the query to perform on the database. If order is present, use as specified.
@@ -89,6 +96,8 @@ while($row = $result->fetch(PDO::FETCH_ASSOC)) {
     //Trim whitespace and append new line
     $data .= trim($line) . "\n";
 }
+//Close connection
+$connection=null;
 
 header("Content-Disposition: attachment; filename=".$table.".csv");
 print "$header\n$data";
