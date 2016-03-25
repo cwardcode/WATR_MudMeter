@@ -43,10 +43,10 @@ else:
 port = "115200"
 
 # The device we're connecting to,
-device = CR1000.from_url('serial:/' + location + ":" + port)
+#device = CR1000.from_url('serial:/' + location + ":" + port)
 
 # Get all tables from device
-tables = device.list_tables()
+#tables = device.list_tables()
 
 # Used to check if header should be used
 has_ran = False
@@ -184,8 +184,8 @@ def emergency_put():
     " Uploads Log file to server in event of crash
     """
 
-    output = "********************************\nException detected above at: " \\ 
-                          + time.strftime("%H:%M:%S") + "!!!! *\n********************************\n"
+    output = "********************************\nException detected above at: "  
+    + time.strftime("%H:%M:%S") + "!!!! *\n********************************\n"
     os.write(log_file, output)
     log_file2 = open('logfile.txt', 'r')
     output = "files opened\n"
@@ -269,8 +269,8 @@ def main():
     " every hour
     """
     # Collect data every 15 minutes
-    get_data()
-
+    #get_data()
+    put_data("lol")
     return 0
 
 # Call main, execute program
