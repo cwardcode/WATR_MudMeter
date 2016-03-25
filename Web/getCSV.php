@@ -1,9 +1,6 @@
 <?php
 include "config.php";
-/**
- * Author: Chris Ward <chris@cwardcode.com>
- * Version: 1/16/2016
- */
+
 //Get name of table passed in
 $table= $_GET['name'];
 
@@ -40,7 +37,7 @@ try {
 if(isset($order)) {
     $query="Select * from " . $table . " order by RecNbr " . $order;
 } elseif (isset($oldDate) && isset($curDate)) {
-    $query="select * from " .$table . " where Date between " .$oldDate . " and " .$curDate;
+    $query="select * from " .$table . " where _datetime between " .$oldDate . " and " .$curDate;
 } else {
     $query="select * from " . $table;
 }

@@ -36,16 +36,14 @@
 
 //Setup graph update button click
 $(document).ready(function() {
-    //Get initial dates
+    //Get initial dates/
     var today = moment().format("YYYY-MM-DD HH:mm");
     var yesterday = moment().add(-1, "days").format("YYYY-MM-DD");
     //Plot initial graph
     getData(yesterday, today,"on");
     //Create date pickers
     $('#datetimepicker1').datetimepicker();
-    $("#datetimepicker1").data("date")
     $('#datetimepicker2').datetimepicker();
-    $("#datetimepicker2").data("date")
     //Click function, gets date, and formats it for query
     $("#dateSub").click(function(){
         //Get dates/format for query
@@ -139,6 +137,7 @@ function getCSVData(data, dataColm,max) {
     //Constant to hold number of points to plot per day.
         var MAXPOINTS    = 385;
     }    
+
     if(data == undefined) {
         location.reload();
     }
@@ -175,13 +174,13 @@ function getCSVData(data, dataColm,max) {
                     dataString += ntu;
                 } else if(headers[j] == dataColm && dataColm == "AquiTemp_Med") {
                     //Convert temperature in Celcius to Fahrenheit
-                    dataString += ((fullData[j] * 1.8) + 32);
-                } else if(headers[j] == dataColm && dataColm == "Date") {
+                    dataString += ((fullData[j] * 1.8) + 32).toFixed(2);
+                } else if(headers[j] == dataColm && dataColm == "_datetime") {
                     //Only show 12hr time from datetime field, build string
                    dataString += fullData[j];
                 } else if(headers[j] == dataColm && dataColm == "DepthFT_Med") {
                     //Build string with data in field
-                    dataString += (+fullData[j] - 0.99 + 1.45).toFixed(3) + ", ";
+                    dataString += (+fullData[j] - 0.99 + 1.45).toFixed(2) + ", ";
                 } else if(headers[j] == dataColm) {
                     //Build string with data in field
                     dataString += fullData[j] + ", ";
@@ -196,13 +195,16 @@ function getCSVData(data, dataColm,max) {
     if(max == "on") {
         lines = lines.slice(lines.length - MAXPOINTS, lines.length - 1) 
     }
-   
+
     return lines;
 } 
 
 /**
- * Function to get data from HydroVu website, sanitize it, and add it to a
+ * Function to get data from website, sanitize it, and add it to a
  * Plotly plot.
+ * 
+ * @param prevDate - the first date in the range
+ * @param recDate  - the second date in the range
  */
 function getData(prevDate,recDate){                                                             
     //Explicitly declare as strings
@@ -219,7 +221,7 @@ function getData(prevDate,recDate){
         //24 hour table header is 100 characters, so if length is less than 110, something went wrong
         //so we reload the page.
         if(data24Hr.length < 110) {
-            location.reload();
+            //location.reload();
         }
      });
     //Get 15 min data
@@ -229,7 +231,7 @@ function getData(prevDate,recDate){
             //Sanitize data, remove formatting
             var data = rawData.replace(/&#xd;/g, "");       
             //Get timeseries points for data 
-            var timeseries = getCSVData(data,"Date"); 
+            var timeseries = getCSVData(data,"_datetime"); 
             //Get turbidity 15min data for TurbNTU
             var turbNTU_Data = getCSVData(data,"TurbNTU_Med");
             //Get turbidity 15min data for TurbNTU
@@ -252,10 +254,8 @@ function getData(prevDate,recDate){
             var turbNTU_24Avg = (parseFloat(turbNTU_24_sample) + parseFloat(turbNTU2_24_sample))/2.0;
             //Get data for Temperature Chart
             var temp15min = getCSVData(data,"AquiTemp_Med");
-
             //Get data for Water Level Chart
             var level15min = getCSVData(data,"DepthFT_Med");
-
             //Hold turbidity data  to print
             var turbNTU = turbNTU_Data;
             //Hold largeset turbidity value
@@ -397,7 +397,6 @@ function getData(prevDate,recDate){
 
             //Create plot and set div for it to load into
             Plotly.newPlot('turbDiv', plotTurbData, layout);
-
 
             //Set up layout for water depth chart
             var layout = {
